@@ -41,11 +41,11 @@ Every design decision in Vritti traces back to Raju.
 
 Vritti is a mobile-first parametric income insurance platform for gig delivery workers — built for Android, available in 5 Indian languages.
 
-- Onboards in ~4 minutes via a vernacular app
-- AI engine calculates a personalized weekly premium (₹35–₹80)
-- 5 parametric triggers auto-detect disruptions in the worker's zone
-- Automatic UPI payout within 2 hours — zero claim filing required
-- 4-layer fraud detection protects the risk pool
+-  Onboards in ~4 minutes via a vernacular app
+-  AI engine calculates a personalized weekly premium (₹35–₹80)
+-  5 parametric triggers auto-detect disruptions in the worker's zone
+-  Automatic UPI payout within 2 hours — zero claim filing required
+-  4-layer fraud detection protects the risk pool
 
 ---
 
@@ -116,7 +116,6 @@ Key engineered features: `zone_disruption_frequency`, `claim_velocity` (fraud si
 Built for someone checking their phone at a red light, not a developer on a MacBook.
 
 - **3-tap rule** — renew, check status, view payout: all ≤3 taps
-- **Vernacular first** — auto-detects device locale; Hindi, Gujarati, Marathi, Tamil, Telugu
 - **WhatsApp notifications** — not push (workers disable those)
 - **Visual status** — Active · Renew Today · Expired
 - **No jargon** — "weekly shield cost", "your protection", "we're sending your money"
@@ -135,16 +134,6 @@ Built for someone checking their phone at a red light, not a developer on a MacB
 
 ---
 
-## Roadmap
-
-| Phase | Weeks | Deliverable |
-|---|---|---|
-| Phase 1 | 1–2 | Architecture, ML design, synthetic data, UI wireframes → This README + strategy video |
-| Phase 2 | 3–4 | Core app: onboarding, policy engine, 5 triggers, claims flow → Working demo |
-| Phase 3 | 5–6 | Fraud layer, payout simulation, admin dashboard, final polish → Full demo + pitch deck |
-
----
-
 ## What Makes Vritti Different
 
 | | Generic Parametric Insurance | Vritti |
@@ -157,9 +146,51 @@ Built for someone checking their phone at a red light, not a developer on a MacB
 
 ---
 
+## Adversarial Defense & Anti-Spoofing Strategy
+
+> **The threat:** A coordinated syndicate using GPS-spoofing apps to fake presence in a disrupted zone — triggering mass false payouts and draining the liquidity pool.
+
+### 1. Genuine Worker vs. GPS Spoofer
+
+Same coordinates, completely different device fingerprint:
+
+| Signal | Genuine Worker | GPS Spoofer |
+|---|---|---|
+| GPS accuracy | Degrades in rain (>20m drift) | Artificially locked — suspiciously precise |
+| Accelerometer | Bike motion up to disruption, then stops | Stationary from shift start |
+| Cell tower history | Consistent with delivery zone | Consistent with home location |
+| Delivery app activity | Hub check-ins, order scans | Zero platform activity |
+
+Vritti cross-references GPS against **cell tower triangulation + accelerometer logs**. A phone that never left a cell cluster 8km from the claimed zone is flagged regardless of GPS output.
+
+### 2. Detecting a Coordinated Fraud Ring
+
+Syndicate fraud has a statistical signature isolated fraud doesn't:
+
+- **Claim burst pattern** — real disruptions produce claims over 20–40 min; syndicate Telegram broadcasts produce a sub-5-minute claim spike
+- **Zone claim density** — claims spiking >2 standard deviations above historical rate triggers a zone-level hold
+- **New account surge** — accounts registered in the same zone within 7 days of a forecast high-risk event are placed on a 14-day claim lockout
+- **Device overlap** — multiple claims from the same Wi-Fi BSSID or identical device fingerprint are flagged as coordinated
+
+### 3. Flagging Bad Actors Without Punishing Honest Workers
+
+Vritti uses a **tiered response**, not a binary block:
+
+| Fraud Score | Action |
+|---|---|
+| 0.0–0.3 | Auto-approve → payout in 2 hrs |
+| 0.3–0.6 | 80% payout + WhatsApp re-verify request |
+| 0.6–1.0 | Hold → human review queue (4hr SLA) |
+
+**The re-verify step:** A genuine worker sends a WhatsApp live location in 3 taps. A spoofer at home cannot match their claimed zone. Minimal friction for honest workers — very hard to defeat at scale.
+
+> Vritti assumes the worker is honest until the data says otherwise — and even then, it asks before it blocks.
+
+---
+
 ## Team
 
-**Team Vritti** — Guidewire DEVTrails 2026 · [yuvraj, nevil, sairaj, shivam, bhunesh]
+**Team QuantumForge** — Guidewire DEVTrails 2026 · [yuvraj, nevil, sairaj, shivam, bhunesh]
 
 ---
 
