@@ -1,0 +1,13 @@
+{
+  "fraud_score": 0.21,
+  "recommendation": "AUTO_APPROVE",
+  "payout_amount": 800,
+  "flags": [],
+  "layers_triggered": [
+    "LAYER_1_PASS",
+    "LAYER_2_PASS",
+    "LAYER_3_PASS",
+    "LAYER_4_PASS",
+    "ANTI_SPOOF_PASS"
+  ]
+}
