@@ -67,13 +67,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: 24,
   },
-  faqList: { gap: 10, flex: 1 },
+  faqList: { flex: 1 },
   faqBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 18,
+    marginBottom: 10,
   },
   faqEmoji: { fontSize: 28, marginRight: 14 },
   faqText: {
@@ -90,11 +91,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#25D366',
     borderRadius: 16,
     padding: 18,
-    gap: 10,
     marginTop: 16,
     elevation: 4,
   },
-  whatsappEmoji: { fontSize: 24 },
+  whatsappEmoji: { fontSize: 24, marginRight: 10 },
   whatsappText: {
     fontSize: 18,
     fontWeight: '700',

@@ -4,11 +4,13 @@ import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getPayoutHistory, PayoutRecord } from '../services/api';
 
+// Map trigger_id from backend (T1-T5) to display icons
 const TRIGGER_ICONS: Record<string, string> = {
-  rain: '🌧️',
-  aqi: '🌫️',
-  heat: '🌡️',
-  curfew: '🚫',
+  T1: '🌧️',  // Flood/Rain
+  T2: '🌫️',  // AQI
+  T3: '🌡️',  // Heatwave
+  T4: '🚫',  // Curfew
+  T5: '⚡',  // Other
 };
 
 export default function HistoryScreen() {
@@ -31,13 +33,13 @@ export default function HistoryScreen() {
 
   const renderItem = ({ item }: { item: PayoutRecord }) => (
     <View style={styles.row}>
-      <Text style={styles.triggerIcon}>{TRIGGER_ICONS[item.trigger_type] || '⚡'}</Text>
+      <Text style={styles.triggerIcon}>{TRIGGER_ICONS[item.trigger_id] || '⚡'}</Text>
       <View style={styles.rowInfo}>
         <Text style={styles.rowAmount}>₹{item.amount}</Text>
-        <Text style={styles.rowDate}>{item.paid_at}</Text>
+        <Text style={styles.rowDate}>{item.paid_at || '—'}</Text>
       </View>
-      <View style={[styles.badge, item.status === 'paid' ? styles.badgePaid : styles.badgePending]}>
-        <Text style={styles.badgeText}>{item.status === 'paid' ? '✅' : '⏳'}</Text>
+      <View style={[styles.badge, item.status?.toUpperCase() === 'PAID' ? styles.badgePaid : styles.badgePending]}>
+        <Text style={styles.badgeText}>{item.status?.toUpperCase() === 'PAID' ? '✅' : '⏳'}</Text>
       </View>
     </View>
   );
@@ -91,13 +93,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: 20,
   },
-  list: { gap: 10 },
+  list: {},
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 18,
+    marginBottom: 10,
   },
   triggerIcon: { fontSize: 32, marginRight: 14 },
   rowInfo: { flex: 1 },
@@ -115,9 +118,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 16,
   },
-  emptyIcon: { fontSize: 64 },
+  emptyIcon: { fontSize: 64, marginBottom: 16 },
   emptyText: {
     fontSize: 16,
     color: '#94A3B8',

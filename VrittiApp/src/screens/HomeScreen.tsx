@@ -83,7 +83,7 @@ export default function HomeScreen({ navigation }: any) {
           <Text style={styles.infoLabel}>{t('last_payout')}</Text>
           <Text style={styles.infoValue}>
             {policy?.last_payout
-              ? `₹${policy.last_payout.amount} (${policy.last_payout.date})`
+              ? `₹${policy.last_payout.amount} (${policy.last_payout.paid_at || '—'})`
               : '—'}
           </Text>
         </View>
@@ -131,9 +131,9 @@ const styles = StyleSheet.create({
   },
   infoRow: {
     flexDirection: 'row',
-    gap: 12,
     width: '100%',
     marginBottom: 16,
+    justifyContent: 'space-between',
   },
   infoCard: {
     flex: 1,
@@ -141,6 +141,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
+    marginHorizontal: 6,
   },
   infoLabel: {
     fontSize: 12,

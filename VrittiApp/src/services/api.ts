@@ -1,4 +1,12 @@
+import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// ─── API Base URL ───
+// Use your machine's LAN IP (same network as your phone running Expo Go)
+// This should match the IP in Metro's exp:// URL  
+const API_BASE = 'http://10.74.4.217:3000';
+// const API_BASE = 'http://10.0.2.2:3000'; // Android emulator only
+// const API_BASE = 'https://your-app.railway.app'; // Production
 
 const CACHE_PREFIX = '@vritti_cache_';
 
@@ -11,6 +19,7 @@ export interface OnboardRequest {
   zone_id?: string;
   device_fingerprint?: string;
   upi_id?: string;
+  language?: string;
 }
 
 export interface OnboardResponse {
@@ -27,21 +36,20 @@ export interface ActivateResponse {
   coverage_cap: number;
 }
 
-export type PolicyStatus = 'ACTIVE' | 'RENEW_TODAY' | 'EXPIRED';
+export type PolicyStatus = 'ACTIVE' | 'RENEW_TODAY' | 'EXPIRED' | 'NO_POLICY';
 
 export interface PolicyStatusResponse {
   status: PolicyStatus;
   coverage_cap: number;
   renewal_date: string;
-  last_payout: { amount: number; date: string } | null;
+  last_payout: { amount: number; paid_at: string } | null;
 }
 
 export interface PayoutRecord {
   amount: number;
   trigger_id: string;
-  trigger_type: 'rain' | 'aqi' | 'heat' | 'curfew';
   paid_at: string;
-  status: 'paid' | 'pending' | 'held';
+  status: string;
 }
 
 // ─── Cache helpers ───
@@ -60,76 +68,85 @@ const cacheGet = async <T>(key: string): Promise<{ data: T; ts: number } | null>
   }
 };
 
-// ─── Mock delay ───
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// ─── API_BASE_URL — swap after March 30 ───
-// const API_BASE = 'https://nevil-api.example.com';
-
-// ─── Mock API Endpoints ───
+// ─── API Endpoints ───
 
 export const workerOnboard = async (req: OnboardRequest): Promise<OnboardResponse> => {
-  await delay(800);
-  const res: OnboardResponse = {
-    worker_id: 'WRK-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-    risk_score: 0.42,
-    premium_tier: 49,
-    coverage_cap: 800,
-  };
-  await AsyncStorage.setItem('@vritti_worker_id', res.worker_id);
-  return res;
+  try {
+    const response = await axios.post(`${API_BASE}/worker/onboard`, {
+      phone: req.phone,
+      name: req.name,
+      platform: req.platform,
+      partner_id: req.partner_id,
+      zone_id: req.zone_id || 'VAD-04', // Default zone for demo
+      device_fingerprint: req.device_fingerprint,
+      upi_id: req.upi_id,
+      language: req.language,
+    }, { timeout: 10000 });
+
+    const res = response.data;
+    await AsyncStorage.setItem('@vritti_worker_id', res.worker_id);
+    return res;
+  } catch (err: any) {
+    // If worker already exists (409), extract worker_id from error response
+    if (err.response?.status === 409 && err.response?.data?.worker_id) {
+      await AsyncStorage.setItem('@vritti_worker_id', err.response.data.worker_id);
+      return {
+        worker_id: err.response.data.worker_id,
+        risk_score: 0.40,
+        premium_tier: 49,
+        coverage_cap: 800,
+      };
+    }
+    console.error('Onboard API failed:', err.message);
+    throw err;
+  }
 };
 
 export const policyActivate = async (
   worker_id: string,
   payment_reference: string
 ): Promise<ActivateResponse> => {
-  await delay(600);
-  const now = new Date();
-  const weekEnd = new Date(now);
-  weekEnd.setDate(now.getDate() + 7);
-  return {
-    policy_id: 'POL-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-    week_start: now.toISOString().split('T')[0],
-    week_end: weekEnd.toISOString().split('T')[0],
-    coverage_cap: 800,
-  };
+  try {
+    const response = await axios.post(`${API_BASE}/policy/activate`, {
+      worker_id,
+      payment_reference,
+    }, { timeout: 10000 });
+
+    return response.data;
+  } catch (err: any) {
+    console.error('Policy activate API failed:', err.message);
+    throw err;
+  }
 };
 
 export const getPolicyStatus = async (worker_id: string): Promise<PolicyStatusResponse> => {
   try {
-    await delay(400);
-    const res: PolicyStatusResponse = {
-      status: 'ACTIVE',
-      coverage_cap: 800,
-      renewal_date: (() => {
-        const d = new Date();
-        d.setDate(d.getDate() + (7 - d.getDay())); // next Sunday
-        return d.toISOString().split('T')[0];
-      })(),
-      last_payout: { amount: 800, date: '2026-03-17' },
-    };
+    const response = await axios.get(`${API_BASE}/policy/status/${worker_id}`, { timeout: 10000 });
+    const res = response.data;
     await cacheSet('policy_status', res);
     return res;
-  } catch {
+  } catch (err: any) {
+    console.error('Policy status API failed, trying cache:', err.message);
     const cached = await cacheGet<PolicyStatusResponse>('policy_status');
     if (cached) return cached.data;
-    throw new Error('No network and no cached data');
+    // Return safe default if no cache
+    return {
+      status: 'NO_POLICY',
+      coverage_cap: 0,
+      renewal_date: '',
+      last_payout: null,
+    };
   }
 };
 
 export const getPayoutHistory = async (worker_id: string): Promise<PayoutRecord[]> => {
   try {
-    await delay(400);
-    const res: PayoutRecord[] = [
-      { amount: 800, trigger_id: 'T001', trigger_type: 'rain', paid_at: '2026-03-17', status: 'paid' },
-      { amount: 600, trigger_id: 'T002', trigger_type: 'aqi', paid_at: '2026-03-10', status: 'paid' },
-      { amount: 800, trigger_id: 'T003', trigger_type: 'heat', paid_at: '2026-03-03', status: 'paid' },
-      { amount: 400, trigger_id: 'T004', trigger_type: 'curfew', paid_at: '2026-02-24', status: 'paid' },
-    ];
-    await cacheSet('payout_history', res);
-    return res;
-  } catch {
+    const response = await axios.get(`${API_BASE}/payout/history/${worker_id}`, { timeout: 10000 });
+    const payouts = response.data.payouts || [];
+    await cacheSet('payout_history', payouts);
+    return payouts;
+  } catch (err: any) {
+    console.error('Payout history API failed, trying cache:', err.message);
     const cached = await cacheGet<PayoutRecord[]>('payout_history');
     if (cached) return cached.data;
     return [];
@@ -140,3 +157,6 @@ export const getCacheTimestamp = async (key: string): Promise<number | null> => 
   const cached = await cacheGet(key);
   return cached ? cached.ts : null;
 };
+
+// ─── Helper: Get API base URL ───
+export const getApiBase = () => API_BASE;

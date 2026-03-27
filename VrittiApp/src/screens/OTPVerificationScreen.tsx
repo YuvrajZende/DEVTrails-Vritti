@@ -88,8 +88,8 @@ const styles = StyleSheet.create({
   },
   otpRow: {
     flexDirection: 'row',
-    gap: 10,
     marginBottom: 32,
+    justifyContent: 'center',
   },
   otpBox: {
     width: 48,
@@ -102,6 +102,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     borderWidth: 2,
     borderColor: '#334155',
+    marginHorizontal: 5,
   },
   otpFilled: {
     borderColor: '#22C55E',

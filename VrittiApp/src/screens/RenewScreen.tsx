@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Switch, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Switch, Linking, ActivityIndicator, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { policyActivate } from '../services/api';
 
 export default function RenewScreen() {
   const { t } = useTranslation();
   const [autoRenew, setAutoRenew] = useState(false);
+  const [renewing, setRenewing] = useState(false);
 
   const premiumAmount = 49;
 
@@ -15,13 +17,23 @@ export default function RenewScreen() {
   };
 
   const handleRenew = async () => {
+    setRenewing(true);
     const upiUrl = `upi://pay?pa=vritti@razorpay&pn=Vritti&am=${premiumAmount}&tn=WeeklyShield&cu=INR`;
     try {
       const canOpen = await Linking.canOpenURL(upiUrl);
       if (canOpen) {
         await Linking.openURL(upiUrl);
       }
-    } catch {}
+
+      // Activate policy via backend
+      const workerId = (await AsyncStorage.getItem('@vritti_worker_id')) || '';
+      if (workerId) {
+        await policyActivate(workerId, `UPI_RENEW_${Date.now()}`);
+      }
+    } catch (err: any) {
+      console.error('Renewal failed:', err.message);
+    }
+    setRenewing(false);
   };
 
   return (

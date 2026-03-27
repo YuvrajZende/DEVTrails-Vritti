@@ -105,8 +105,8 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 12,
     marginBottom: 24,
+    justifyContent: 'space-between',
   },
   statCard: {
     flex: 1,
@@ -115,6 +115,7 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     borderLeftWidth: 4,
+    marginHorizontal: 6,
   },
   statValue: {
     fontSize: 32,
@@ -135,10 +136,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
   },
-  dayCol: { alignItems: 'center', gap: 8 },
+  dayCol: { alignItems: 'center' },
   dayDot: { width: 28, height: 28, borderRadius: 14 },
   dayActive: { backgroundColor: '#22C55E' },
   dayDisruption: { backgroundColor: '#EAB308' },
   dayInactive: { backgroundColor: '#334155' },
-  dayText: { fontSize: 11, color: '#94A3B8', fontWeight: '600' },
+  dayText: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginTop: 8 },
 });

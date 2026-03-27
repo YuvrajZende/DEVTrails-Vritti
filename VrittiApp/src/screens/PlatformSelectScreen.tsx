@@ -67,7 +67,6 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 14,
     justifyContent: 'center',
   },
   btn: {
@@ -80,6 +79,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
+    margin: 7,
   },
   btnSelected: {
     borderWidth: 3,

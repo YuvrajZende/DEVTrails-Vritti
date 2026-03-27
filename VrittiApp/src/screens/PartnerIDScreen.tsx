@@ -88,11 +88,11 @@ const styles = StyleSheet.create({
   },
   loadingRow: {
     alignItems: 'center',
-    gap: 12,
   },
   loadingText: {
     fontSize: 16,
     color: '#94A3B8',
+    marginTop: 12,
   },
   btn: {
     width: '100%',

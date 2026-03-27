@@ -62,7 +62,6 @@ const styles = StyleSheet.create({
   },
   grid: {
     width: '100%',
-    gap: 14,
   },
   btn: {
     paddingVertical: 20,
@@ -73,6 +72,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
+    marginBottom: 14,
   },
   btnText: {
     fontSize: 26,
