@@ -1,25 +1,23 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Linking, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Linking, Alert, ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, CommonActions } from '@react-navigation/native';
+import { Feather } from '@expo/vector-icons';
 
 const FAQS = [
-  { key: 'faq_what_is', emoji: '❓' },
-  { key: 'faq_how_paid', emoji: '💸' },
-  { key: 'faq_held', emoji: '⏸️' },
-  { key: 'faq_how_renew', emoji: '🔄' },
-  { key: 'faq_shield', emoji: '🛡️' },
+  { key: 'faq_what_is', defaultText: 'What is Weekly Shield?' },
+  { key: 'faq_how_paid', defaultText: 'How do payouts work?' },
+  { key: 'faq_held', defaultText: 'Why is my payout held?' },
+  { key: 'faq_how_renew', defaultText: 'How to auto-renew?' },
+  { key: 'faq_shield', defaultText: 'What disruptions are covered?' },
 ] as const;
 
 export default function HelpScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
 
-  const handleFAQ = (key: string) => {
-    // In production: use expo-av to play pre-recorded Hindi audio
-    // For hackathon: just show a simple alert or do nothing
-  };
+  const handleFAQ = (key: string) => {};
 
   const handleWhatsApp = () => {
     Linking.openURL('https://wa.me/919999999999');
@@ -49,106 +47,74 @@ export default function HelpScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
-      <Text style={styles.title}>🎧 {t('help')}</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
+      
+      <Text style={styles.title}>{t('support', 'Support')}</Text>
 
       <View style={styles.faqList}>
         {FAQS.map((faq) => (
           <TouchableOpacity
             key={faq.key}
-            style={styles.faqBtn}
+            style={styles.faqCard}
             onPress={() => handleFAQ(faq.key)}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
-            <Text style={styles.faqEmoji}>{faq.emoji}</Text>
-            <Text style={styles.faqText}>{t(faq.key)}</Text>
-            <Text style={styles.playIcon}>🔊</Text>
+            <Text style={styles.faqText}>{t(faq.key, faq.defaultText)}</Text>
+            <View style={styles.arrowCircle}>
+              <Feather name="arrow-right" size={20} color="#FFFFFF" />
+            </View>
           </TouchableOpacity>
         ))}
       </View>
 
       <TouchableOpacity
-        style={styles.whatsappBtn}
+        style={styles.actionCard}
         onPress={handleWhatsApp}
         activeOpacity={0.8}
       >
-        <Text style={styles.whatsappEmoji}>💬</Text>
-        <Text style={styles.whatsappText}>{t('whatsapp_support')}</Text>
+        <Feather name="message-circle" size={24} color="#111827" />
+        <View style={{ flex: 1, marginLeft: 16 }}>
+          <Text style={styles.actionCardTitle}>{t('whatsapp_support', 'Contact WhatsApp Support')}</Text>
+          <Text style={styles.actionCardSub}>Get help from a real person</Text>
+        </View>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.resetBtn}
+        style={[styles.actionCard, styles.dangerCard]}
         onPress={handleResetSession}
         activeOpacity={0.8}
       >
-        <Text style={styles.resetEmoji}>⚠️</Text>
-        <Text style={styles.resetText}>Reset App Session</Text>
+        <Feather name="alert-triangle" size={24} color="#DC2626" />
+        <View style={{ flex: 1, marginLeft: 16 }}>
+          <Text style={styles.dangerTitle}>Reset App Session</Text>
+          <Text style={styles.dangerSub}>Clear local data & restart onboarding</Text>
+        </View>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A1628',
-    padding: 24,
-    paddingTop: 60,
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  scrollContent: { padding: 24, paddingTop: 60, paddingBottom: 120 },
+  title: { fontSize: 32, fontWeight: '900', color: '#111827', marginBottom: 24 },
+  faqList: { gap: 16, marginBottom: 32 },
+  faqCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 3,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 24,
+  faqText: { flex: 1, fontSize: 16, fontWeight: '800', color: '#111827' },
+  arrowCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#111827', justifyContent: 'center', alignItems: 'center' },
+  actionCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', marginBottom: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 3,
   },
-  faqList: { flex: 1 },
-  faqBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 10,
-  },
-  faqEmoji: { fontSize: 28, marginRight: 14 },
-  faqText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#CBD5E1',
-    fontWeight: '600',
-  },
-  playIcon: { fontSize: 20 },
-  whatsappBtn: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#25D366',
-    borderRadius: 16,
-    padding: 18,
-    marginTop: 16,
-    elevation: 4,
-  },
-  whatsappEmoji: { fontSize: 24, marginRight: 10 },
-  whatsappText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  resetBtn: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#EF4444',
-    borderRadius: 16,
-    padding: 18,
-    marginTop: 16,
-    elevation: 4,
-  },
-  resetEmoji: { fontSize: 24, marginRight: 10 },
-  resetText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
+  actionCardTitle: { fontSize: 16, fontWeight: '900', color: '#111827' },
+  actionCardSub: { fontSize: 13, fontWeight: '600', color: 'rgba(0,0,0,0.4)', marginTop: 4 },
+  dangerCard: { borderColor: 'rgba(220,38,38,0.2)', backgroundColor: '#FEF2F2' },
+  dangerTitle: { fontSize: 16, fontWeight: '900', color: '#DC2626' },
+  dangerSub: { fontSize: 13, fontWeight: '600', color: 'rgba(220,38,38,0.6)', marginTop: 4 },
 });

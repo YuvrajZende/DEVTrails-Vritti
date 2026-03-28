@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { Feather } from '@expo/vector-icons';
 
 const PLATFORMS = [
-  { id: 'amazon', label: 'Amazon', emoji: '📦', color: '#FF9900' },
-  { id: 'flipkart', label: 'Flipkart', emoji: '🛒', color: '#2874F0' },
-  { id: 'meesho', label: 'Meesho', emoji: '🛍️', color: '#E91E63' },
-  { id: 'other', label: 'Other', emoji: '🚲', color: '#6B7280' },
+  { id: 'amazon', label: 'Amazon', emoji: '📦' },
+  { id: 'flipkart', label: 'Flipkart', emoji: '🛒' },
+  { id: 'meesho', label: 'Meesho', emoji: '🛍️' },
+  { id: 'other', label: 'Other', emoji: '🚲' },
 ];
 
 export default function PlatformSelectScreen({ navigation, route }: any) {
@@ -22,70 +23,54 @@ export default function PlatformSelectScreen({ navigation, route }: any) {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
-      <Text style={styles.emoji}>🏢</Text>
-      <Text style={styles.title}>{t('select_platform')}</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <Feather name="arrow-left" size={20} color="#111827" />
+      </TouchableOpacity>
+
+      <Text style={styles.title}>{t('select_platform', 'Which platform do you work with?')}</Text>
+      <Text style={styles.subtitle}>Select your delivery or gig platform</Text>
+
       <View style={styles.grid}>
         {PLATFORMS.map((p) => (
           <TouchableOpacity
             key={p.id}
-            style={[
-              styles.btn,
-              { backgroundColor: p.color },
-              selected === p.id && styles.btnSelected,
-            ]}
+            style={[styles.platformCard, selected === p.id ? styles.platformCardSelected : styles.platformCardDefault]}
             onPress={() => handleSelect(p.id)}
             activeOpacity={0.8}
           >
             <Text style={styles.platformEmoji}>{p.emoji}</Text>
-            <Text style={styles.platformLabel}>{p.label}</Text>
+            <Text style={[styles.platformLabel, selected === p.id ? styles.labelSelected : styles.labelDefault]}>
+              {p.label}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A1628',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  scrollContent: { padding: 24, paddingTop: 60 },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF', marginBottom: 32,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
-  emoji: { fontSize: 64, marginBottom: 16 },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 32,
-    textAlign: 'center',
+  title: { fontSize: 32, fontWeight: '900', color: '#111827', marginBottom: 8 },
+  subtitle: { fontSize: 16, fontWeight: '800', color: 'rgba(0,0,0,0.4)', marginBottom: 40 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  platformCard: {
+    width: '47%', aspectRatio: 1, borderRadius: 24, borderWidth: 2,
+    alignItems: 'center', justifyContent: 'center', gap: 16,
   },
-  grid: {
-    width: '100%',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-  },
-  btn: {
-    width: '45%',
-    paddingVertical: 28,
-    borderRadius: 20,
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    margin: 7,
-  },
-  btnSelected: {
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    transform: [{ scale: 1.02 }],
-  },
-  platformEmoji: { fontSize: 40, marginBottom: 8 },
-  platformLabel: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
+  platformCardSelected: { borderColor: '#111827', backgroundColor: '#111827', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8 },
+  platformCardDefault: { borderColor: 'rgba(0,0,0,0.05)', backgroundColor: '#FFFFFF' },
+  platformEmoji: { fontSize: 48 },
+  platformLabel: { fontSize: 16, fontWeight: '900' },
+  labelSelected: { color: '#FFFFFF' },
+  labelDefault: { color: '#111827' },
 });
