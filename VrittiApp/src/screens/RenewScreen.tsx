@@ -1,15 +1,34 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Switch, Linking, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Switch, Linking, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { policyActivate } from '../services/api';
+import { policyActivate, getPolicyStatus } from '../services/api';
 
 export default function RenewScreen() {
   const { t } = useTranslation();
   const [autoRenew, setAutoRenew] = useState(false);
   const [renewing, setRenewing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [premiumAmount, setPremiumAmount] = useState(49); // default fallback
 
-  const premiumAmount = 49;
+  useEffect(() => {
+    loadPremium();
+  }, []);
+
+  const loadPremium = async () => {
+    try {
+      const workerId = (await AsyncStorage.getItem('@vritti_worker_id')) || '';
+      if (workerId) {
+        const status = await getPolicyStatus(workerId);
+        if (status && (status as any).premium_amount) {
+          setPremiumAmount((status as any).premium_amount);
+        }
+      }
+    } catch (err) {
+      console.log('Failed to fetch premium', err);
+    }
+    setLoading(false);
+  };
 
   const handleAutoRenewToggle = async (value: boolean) => {
     setAutoRenew(value);
@@ -36,6 +55,15 @@ export default function RenewScreen() {
     setRenewing(false);
   };
 
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
+        <ActivityIndicator size="large" color="#22C55E" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
@@ -47,7 +75,7 @@ export default function RenewScreen() {
         <Text style={styles.perWeek}>{t('per_week')}</Text>
       </View>
 
-      {/* Auto-renew toggle */}
+      {/* ... toggle row code ... */}
       <View style={styles.toggleRow}>
         <Text style={styles.toggleLabel}>{t('auto_renew')}</Text>
         <Switch

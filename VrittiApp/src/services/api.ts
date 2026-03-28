@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // ─── API Base URL ───
 // Use your machine's LAN IP (same network as your phone running Expo Go)
 // This should match the IP in Metro's exp:// URL  
-const API_BASE = 'http://10.74.4.217:3000';
+const API_BASE = 'http://10.74.4.84:3000';
 // const API_BASE = 'http://10.0.2.2:3000'; // Android emulator only
 // const API_BASE = 'https://your-app.railway.app'; // Production
 
@@ -56,7 +56,7 @@ export interface PayoutRecord {
 const cacheSet = async (key: string, data: any) => {
   try {
     await AsyncStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ data, ts: Date.now() }));
-  } catch {}
+  } catch { }
 };
 
 const cacheGet = async <T>(key: string): Promise<{ data: T; ts: number } | null> => {
@@ -104,12 +104,18 @@ export const workerOnboard = async (req: OnboardRequest): Promise<OnboardRespons
 
 export const policyActivate = async (
   worker_id: string,
-  payment_reference: string
+  payment_reference: string,
+  premium?: number,
+  coverage_cap?: number,
+  risk_score?: number
 ): Promise<ActivateResponse> => {
   try {
     const response = await axios.post(`${API_BASE}/policy/activate`, {
       worker_id,
       payment_reference,
+      premium,
+      coverage_cap,
+      risk_score
     }, { timeout: 10000 });
 
     return response.data;

@@ -7,21 +7,38 @@ import { workerOnboard, policyActivate } from '../services/api';
 export default function PremiumQuoteScreen({ navigation, route }: any) {
   const { t } = useTranslation();
   const params = route?.params ?? {};
+  
+  const [loadingQuote, setLoadingQuote] = useState(true);
   const [activating, setActivating] = useState(false);
+  const [workerData, setWorkerData] = useState<any>(null);
 
-  const premiumAmount = 49;
-  const coverageCap = 800;
+  React.useEffect(() => {
+    // 1. Onboard the worker immediately to generate the quote
+    const generateQuote = async () => {
+      try {
+        const onboardRes = await workerOnboard({
+          phone: params.phone || '9999999999',
+          platform: params.platform || 'amazon',
+          partner_id: params.partnerId || 'AMZ-001',
+        });
+        setWorkerData(onboardRes);
+      } catch (err: any) {
+        // Just fail gracefully, or it relies on mock in workerOnboard
+      } finally {
+        setLoadingQuote(false);
+      }
+    };
+    generateQuote();
+  }, []);
+
+  const premiumAmount = workerData?.premium_tier || 49;
+  const coverageCap = workerData?.coverage_cap || 800;
+  const riskScore = workerData?.risk_score || 0.40;
 
   const handleActivate = async () => {
+    if (!workerData?.worker_id) return;
     setActivating(true);
     try {
-      // 1. Onboard the worker
-      const onboardRes = await workerOnboard({
-        phone: params.phone || '9999999999',
-        platform: params.platform || 'amazon',
-        partner_id: params.partnerId || 'AMZ-001',
-      });
-
       // 2. Open UPI deeplink
       const upiUrl = `upi://pay?pa=vritti@razorpay&pn=Vritti&am=${premiumAmount}&tn=WeeklyShield&cu=INR`;
       const canOpen = await Linking.canOpenURL(upiUrl);
@@ -29,26 +46,37 @@ export default function PremiumQuoteScreen({ navigation, route }: any) {
         await Linking.openURL(upiUrl);
       }
 
-      // 3. Activate policy (mock — in real app, wait for payment callback)
-      await policyActivate(onboardRes.worker_id, 'mock-payment-ref');
+      // 3. Activate policy using the dynamic risk score/premium rules
+      await policyActivate(workerData.worker_id, 'mock-payment-ref', premiumAmount, coverageCap, riskScore);
 
       // 4. Mark onboarding complete
       await AsyncStorage.setItem('@vritti_onboarded', 'true');
-      await AsyncStorage.setItem('@vritti_worker_id', onboardRes.worker_id);
+      await AsyncStorage.setItem('@vritti_worker_id', workerData.worker_id);
 
-      // 5. Navigate to main app
+      // 5. Navigate to main app (call onComplete from props, not params!)
+      // Ensure we call the passed onComplete prop from the parent navigator
       if (params.onComplete) {
         params.onComplete();
+      } else if (route.params?.onComplete) {
+          route.params.onComplete();
       }
     } catch (err) {
-      // For hackathon: still mark as complete even on error
       await AsyncStorage.setItem('@vritti_onboarded', 'true');
-      if (params.onComplete) {
-        params.onComplete();
-      }
+      if (params.onComplete) params.onComplete();
+      else if (route.params?.onComplete) route.params.onComplete();
     }
     setActivating(false);
   };
+
+  if (loadingQuote) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
+        <ActivityIndicator size="large" color="#22C55E" />
+        <Text style={{color: '#94A3B8', marginTop: 16}}>Calculating risk score...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

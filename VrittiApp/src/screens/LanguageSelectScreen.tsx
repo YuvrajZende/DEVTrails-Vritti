@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { setStoredLanguage } from '../i18n';
 
 const LANGUAGES = [
+  { code: 'en', label: 'English', color: '#3B82F6' },
   { code: 'hi', label: 'हिन्दी', color: '#FF6B35' },
   { code: 'gu', label: 'ગુજરાતી', color: '#2EC4B6' },
   { code: 'mr', label: 'मराठी', color: '#E71D36' },

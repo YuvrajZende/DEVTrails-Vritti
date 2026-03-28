@@ -23,17 +23,14 @@ export default async function claimRoutes(fastify, opts) {
             await client.query('BEGIN');
 
             // Find all workers in this zone with ACTIVE policies
-            const today = new Date().toISOString().split('T')[0];
             const workersResult = await client.query(
                 `SELECT w.id AS worker_id, w.zone_id, w.upi_id, p.id AS policy_id, p.coverage_cap
                  FROM workers w
                  JOIN policies p ON p.worker_id = w.id
                  WHERE w.zone_id = $1
                    AND w.is_active = true
-                   AND p.status = 'ACTIVE'
-                   AND p.week_start <= $2
-                   AND p.week_end >= $2`,
-                [zone_id, today]
+                   AND p.status = 'ACTIVE'`,
+                [zone_id]
             );
 
             if (workersResult.rows.length === 0) {
@@ -50,6 +47,7 @@ export default async function claimRoutes(fastify, opts) {
             let autoApproved = 0;
             let held = 0;
             const claimIds = [];
+            const claimDetails = []; // Full claim objects for LangGraph orchestrator
 
             for (const worker of workersResult.rows) {
                 const claimId = generateClaimId();
@@ -114,6 +112,13 @@ export default async function claimRoutes(fastify, opts) {
                 if (claimStatus === 'APPROVED') autoApproved++;
                 if (claimStatus === 'HOLD') held++;
                 claimIds.push(claimId);
+                claimDetails.push({
+                    id: claimId,
+                    worker_id: worker.worker_id,
+                    payout_amount: fraudData.payout_amount,
+                    fraud_score: fraudData.fraud_score,
+                    status: claimStatus
+                });
             }
 
             await client.query('COMMIT');
@@ -122,7 +127,8 @@ export default async function claimRoutes(fastify, opts) {
                 claims_created: claimsCreated,
                 auto_approved: autoApproved,
                 held: held,
-                claim_ids: claimIds
+                claim_ids: claimIds,
+                claims: claimDetails
             });
 
         } catch (err) {

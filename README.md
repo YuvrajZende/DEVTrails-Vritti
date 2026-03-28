@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Guidewire-DEVTrails%202026-red?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Phase-1%20Submission-orange?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Phase-2%20Submission-orange?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Status-Active%20Development-green?style=for-the-badge" />
 </p>
 
@@ -127,10 +127,55 @@ Built for someone checking their phone at a red light, not a developer on a MacB
 | Layer | Stack |
 |---|---|
 | Mobile | React Native (Expo) · Android-only · i18next · expo-localization · Lottie |
-| Backend | Node.js · Fastify · PostgreSQL · Redis · BullMQ |
+| Backend | Node.js · Fastify · PostgreSQL · Neon · n8n |
+| Orchestrator | Python · LangGraph · FastAPI |
 | ML Service | Python · FastAPI · XGBoost · scikit-learn · Pandas |
-| Integrations | OpenWeatherMap · CPCB AQI · News API · Razorpay (test) · Twilio WhatsApp |
-| Infrastructure | Railway/Render · Neon Postgres · GitHub Actions |
+| Integrations | OpenWeatherMap · CPCB AQI · News API |
+| Infrastructure | Railway · Neon Postgres |
+
+---
+
+## How to Run Locally
+
+Vritti runs as a set of interconnected microservices. You need to start all 4 components for the full end-to-end flow.
+
+### 1. Node.js Backend (Port 3000)
+Handles DB connections, worker onboarding, policies, and claims.
+```bash
+cd bhunesh-backend
+npm install
+# Ensure you have a .env file with DATABASE_URL and RISK_SCORE_URL=http://localhost:8001/risk-score
+npm start
+```
+
+### 2. ML Risk Score Service (Port 8001)
+Generates dynamic insurance premiums and risk scores using XGBoost during onboarding.
+```bash
+cd risk-score-service
+python -m venv venv
+.\venv\Scripts\activate  # or `source venv/bin/activate` on Mac/Linux
+pip install -r requirements.txt
+python main.py
+```
+
+### 3. LangGraph Orchestrator (Port 8000)
+The AI brain that intercepts n8n webhook disruption triggers, evaluates severity, fetches impacted workers, and initiates payouts.
+```bash
+cd langgraph-orchestrator
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
+
+### 4. VrittiApp (React Native Frontend)
+The worker-facing Android application.
+```bash
+cd VrittiApp
+npm install
+# Important: Update API_BASE in `src/services/api.ts` to point to your computer's local IP address (e.g. http://192.168.1.100:3000)
+npx expo start
+```
 
 ---
 

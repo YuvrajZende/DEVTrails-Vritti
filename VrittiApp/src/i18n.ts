@@ -3,6 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import * as Localization from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import en from './locales/en.json';
 import hi from './locales/hi.json';
 import gu from './locales/gu.json';
 import mr from './locales/mr.json';
@@ -10,7 +11,7 @@ import ta from './locales/ta.json';
 import te from './locales/te.json';
 
 const LANGUAGE_KEY = '@vritti_language';
-const SUPPORTED_LANGUAGES = ['hi', 'gu', 'mr', 'ta', 'te'];
+const SUPPORTED_LANGUAGES = ['en', 'hi', 'gu', 'mr', 'ta', 'te'];
 
 export const getStoredLanguage = async (): Promise<string | null> => {
   try {
@@ -32,10 +33,10 @@ export const setStoredLanguage = async (lang: string): Promise<void> => {
 const getDeviceLanguage = (): string => {
   const locales = Localization.getLocales();
   if (locales && locales.length > 0) {
-    const code = locales[0].languageCode ?? 'hi';
+    const code = locales[0].languageCode ?? 'en';
     if (SUPPORTED_LANGUAGES.includes(code)) return code;
   }
-  return 'hi';
+  return 'en';
 };
 
 export const initI18n = async () => {
@@ -44,6 +45,7 @@ export const initI18n = async () => {
 
   await i18next.use(initReactI18next).init({
     resources: {
+      en: { translation: en },
       hi: { translation: hi },
       gu: { translation: gu },
       mr: { translation: mr },
@@ -51,7 +53,7 @@ export const initI18n = async () => {
       te: { translation: te },
     },
     lng,
-    fallbackLng: 'hi',
+    fallbackLng: 'en',
     interpolation: { escapeValue: false },
     compatibilityJSON: 'v4',
   });

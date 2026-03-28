@@ -47,10 +47,15 @@ export default async function policyRoutes(fastify, opts) {
             const weekEnd = getSundayAfter(weekStart);
             const policyId = generatePolicyId();
 
-            // Default premium/coverage — in real flow these come from the onboarding risk score
-            const premiumPaid = 49;
-            const coverageCap = 800;
-            const riskScore = 0.40;
+            // We need to fetch the worker's risk tier. For this hackathon, since 
+            // onboarding returns the premium but doesn't save it to the worker row, 
+            // the frontend should ideally pass it. Wait, the frontend doesn't pass it.
+            // Let's modify the frontend later to pass it, or we can just fetch it here.
+            // But onboarding already calculated it. Let's add premium_tier and coverage_cap to body.
+            
+            const premiumPaid = request.body.premium || 49;
+            const coverageCap = request.body.coverage_cap || 800;
+            const riskScore = request.body.risk_score || 0.40;
 
             await client.query(
                 `INSERT INTO policies (id, worker_id, week_start, week_end, premium_paid, coverage_cap, risk_score, status)
@@ -124,6 +129,7 @@ export default async function policyRoutes(fastify, opts) {
 
             return reply.send({
                 status,
+                premium_amount: policy.premium_paid,
                 coverage_cap: policy.coverage_cap,
                 renewal_date: policy.week_end,
                 last_payout: lastPayout

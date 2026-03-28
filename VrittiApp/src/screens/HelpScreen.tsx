@@ -1,6 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Linking, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 
 const FAQS = [
   { key: 'faq_what_is', emoji: '❓' },
@@ -12,6 +14,7 @@ const FAQS = [
 
 export default function HelpScreen() {
   const { t } = useTranslation();
+  const navigation = useNavigation();
 
   const handleFAQ = (key: string) => {
     // In production: use expo-av to play pre-recorded Hindi audio
@@ -20,6 +23,29 @@ export default function HelpScreen() {
 
   const handleWhatsApp = () => {
     Linking.openURL('https://wa.me/919999999999');
+  };
+
+  const handleResetSession = () => {
+    Alert.alert(
+      "Reset Session",
+      "Are you sure you want to clear your data and return to the language screen?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Yes, Reset", 
+          style: "destructive",
+          onPress: async () => {
+            await AsyncStorage.clear();
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'LanguageSelect' }],
+              })
+            );
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -49,6 +75,15 @@ export default function HelpScreen() {
       >
         <Text style={styles.whatsappEmoji}>💬</Text>
         <Text style={styles.whatsappText}>{t('whatsapp_support')}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.resetBtn}
+        onPress={handleResetSession}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.resetEmoji}>⚠️</Text>
+        <Text style={styles.resetText}>Reset App Session</Text>
       </TouchableOpacity>
     </View>
   );
@@ -96,6 +131,22 @@ const styles = StyleSheet.create({
   },
   whatsappEmoji: { fontSize: 24, marginRight: 10 },
   whatsappText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  resetBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    borderRadius: 16,
+    padding: 18,
+    marginTop: 16,
+    elevation: 4,
+  },
+  resetEmoji: { fontSize: 24, marginRight: 10 },
+  resetText: {
     fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
