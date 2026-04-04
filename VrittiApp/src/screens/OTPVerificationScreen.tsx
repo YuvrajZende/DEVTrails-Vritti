@@ -1,6 +1,8 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import { Pressable, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { AppScreen, PrimaryButton, ScreenHeading } from '../ui/components';
+import { colors } from '../ui/theme';
 
 export default function OTPVerificationScreen({ navigation, route }: any) {
   const { t } = useTranslation();
@@ -10,111 +12,105 @@ export default function OTPVerificationScreen({ navigation, route }: any) {
 
   const handleChange = (text: string, index: number) => {
     const digit = text.replace(/[^0-9]/g, '');
-    const newOtp = [...otp];
-    newOtp[index] = digit;
-    setOtp(newOtp);
+    const nextOtp = [...otp];
+    nextOtp[index] = digit;
+    setOtp(nextOtp);
+
     if (digit && index < 5) {
       refs.current[index + 1]?.focus();
     }
   };
 
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
+  const handleKeyPress = (event: any, index: number) => {
+    if (event.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
       refs.current[index - 1]?.focus();
     }
   };
 
-  const isComplete = otp.every((d) => d.length === 1);
-
-  const handleVerify = () => {
-    if (isComplete) {
-      navigation.navigate('PlatformSelect', { phone });
-    }
-  };
+  const isComplete = otp.every((digit) => digit.length === 1);
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
-      <Text style={styles.emoji}>🔐</Text>
-      <Text style={styles.title}>{t('enter_otp')}</Text>
-      <Text style={styles.sub}>+91 {phone}</Text>
+    <AppScreen contentContainerStyle={styles.content}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.page} />
+      <Text style={styles.stepText}>Step 3 of 5</Text>
+      <ScreenHeading title="Verify" subtitle={`Code sent to +91 ${phone}`} />
+
       <View style={styles.otpRow}>
-        {otp.map((digit, i) => (
+        {otp.map((digit, index) => (
           <TextInput
-            key={i}
-            ref={(r) => { refs.current[i] = r; }}
-            style={[styles.otpBox, digit ? styles.otpFilled : null]}
+            key={index}
+            ref={(ref) => {
+              refs.current[index] = ref;
+            }}
+            style={[styles.otpBox, digit && styles.otpBoxFilled]}
             value={digit}
-            onChangeText={(txt) => handleChange(txt, i)}
-            onKeyPress={(e) => handleKeyPress(e, i)}
+            onChangeText={(text) => handleChange(text, index)}
+            onKeyPress={(event) => handleKeyPress(event, index)}
             keyboardType="number-pad"
             maxLength={1}
             selectTextOnFocus
           />
         ))}
       </View>
-      <TouchableOpacity
-        style={[styles.btn, isComplete ? styles.btnActive : styles.btnDisabled]}
-        onPress={handleVerify}
+
+      <PrimaryButton
+        title={t('verify')}
+        onPress={() => navigation.navigate('PlatformSelect', { phone })}
         disabled={!isComplete}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.btnText}>{t('verify')}</Text>
-      </TouchableOpacity>
-    </View>
+      />
+
+      <Pressable style={styles.resendButton}>
+        <Text style={styles.resendText}>Resend OTP</Text>
+      </Pressable>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A1628',
+  content: {
+    paddingBottom: 44,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
   },
-  emoji: { fontSize: 64, marginBottom: 16 },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  sub: {
-    fontSize: 16,
-    color: '#94A3B8',
-    marginBottom: 32,
+  stepText: {
+    fontSize: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: colors.softText,
+    marginBottom: 12,
   },
   otpRow: {
     flexDirection: 'row',
-    marginBottom: 32,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 24,
   },
   otpBox: {
-    width: 48,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: '#1E293B',
+    flex: 1,
+    aspectRatio: 1,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
     textAlign: 'center',
     fontSize: 24,
-    color: '#FFFFFF',
-    fontWeight: '700',
-    borderWidth: 2,
-    borderColor: '#334155',
-    marginHorizontal: 5,
+    fontWeight: '900',
+    color: colors.text,
   },
-  otpFilled: {
-    borderColor: '#22C55E',
-    backgroundColor: '#1A3A2A',
+  otpBoxFilled: {
+    borderColor: colors.black,
   },
-  btn: {
-    width: '100%',
-    paddingVertical: 18,
-    borderRadius: 16,
+  resendButton: {
     alignItems: 'center',
+    marginTop: 18,
   },
-  btnActive: { backgroundColor: '#22C55E', elevation: 4 },
-  btnDisabled: { backgroundColor: '#334155' },
-  btnText: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
+  resendText: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: colors.text,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
 });
+
+

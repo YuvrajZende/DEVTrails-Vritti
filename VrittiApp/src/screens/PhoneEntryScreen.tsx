@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Alert } from 'react-native';
+import { Alert, StatusBar, StyleSheet, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { AppCard, AppScreen, InputField, PrimaryButton, ScreenHeading } from '../ui/components';
+import { colors } from '../ui/theme';
 
 export default function PhoneEntryScreen({ navigation }: any) {
   const { t } = useTranslation();
@@ -8,96 +10,79 @@ export default function PhoneEntryScreen({ navigation }: any) {
 
   const handleSendOTP = () => {
     if (phone.length !== 10) {
-      Alert.alert('', t('phone_placeholder'));
+      Alert.alert('Invalid number', t('phone_placeholder'));
       return;
     }
+
     navigation.navigate('OTPVerification', { phone });
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
-      <Text style={styles.emoji}>📱</Text>
-      <Text style={styles.title}>{t('enter_phone')}</Text>
-      <View style={styles.inputRow}>
-        <Text style={styles.prefix}>+91</Text>
-        <TextInput
-          style={styles.input}
-          value={phone}
-          onChangeText={(txt) => setPhone(txt.replace(/[^0-9]/g, '').slice(0, 10))}
+    <AppScreen contentContainerStyle={styles.content}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.page} />
+      <Text style={styles.stepText}>Step 2 of 5</Text>
+      <ViewProgress current={2} />
+      <ScreenHeading title="Phone" subtitle="We will send a 6-digit verification code to continue onboarding." />
+
+      <AppCard style={styles.card}>
+        <InputField
+          label="Mobile number"
+          prefix="+91"
+          placeholder="00000 00000"
           keyboardType="number-pad"
-          placeholder={t('phone_placeholder')}
-          placeholderTextColor="#64748B"
           maxLength={10}
           autoFocus
+          value={phone}
+          onChangeText={(value) => setPhone(value.replace(/[^0-9]/g, '').slice(0, 10))}
+          helper="By continuing, you agree to the Vritti terms and privacy policy."
         />
-      </View>
-      <TouchableOpacity
-        style={[styles.btn, phone.length === 10 ? styles.btnActive : styles.btnDisabled]}
-        onPress={handleSendOTP}
-        disabled={phone.length !== 10}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.btnText}>{t('send_otp')}</Text>
-      </TouchableOpacity>
-    </View>
+      </AppCard>
+
+      <PrimaryButton title={t('send_otp')} onPress={handleSendOTP} disabled={phone.length !== 10} />
+    </AppScreen>
+  );
+}
+
+function ViewProgress({ current }: { current: number }) {
+  return (
+    <AppCard style={styles.progressWrap}>
+      <Text style={styles.progressText}>{current} / 5 complete</Text>
+      <Text style={styles.progressHint}>Fast setup for workers, rebuilt in the reference UI style.</Text>
+    </AppCard>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A1628',
+  content: {
+    paddingBottom: 44,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
   },
-  emoji: { fontSize: 64, marginBottom: 16 },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 32,
-    textAlign: 'center',
+  stepText: {
+    fontSize: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: colors.softText,
+    marginBottom: 12,
   },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    width: '100%',
-    marginBottom: 24,
+  progressWrap: {
+    marginBottom: 20,
+    gap: 6,
   },
-  prefix: {
-    fontSize: 22,
-    color: '#94A3B8',
+  progressText: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: colors.text,
+  },
+  progressHint: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.muted,
     fontWeight: '600',
-    marginRight: 8,
   },
-  input: {
-    flex: 1,
-    fontSize: 24,
-    color: '#FFFFFF',
-    paddingVertical: 18,
-    letterSpacing: 2,
-  },
-  btn: {
-    width: '100%',
-    paddingVertical: 18,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  btnActive: {
-    backgroundColor: '#22C55E',
-    elevation: 4,
-  },
-  btnDisabled: {
-    backgroundColor: '#334155',
-  },
-  btnText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  card: {
+    marginBottom: 20,
   },
 });
+
+

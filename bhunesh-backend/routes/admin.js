@@ -1,69 +1,80 @@
 import axios from 'axios';
 
-let eventCounter = 0;
-
 function generateEventId() {
-    eventCounter++;
-    return `evt_${Date.now()}_${String(eventCounter).padStart(3, '0')}`;
+    return `evt_${Date.now()}_${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 }
 
-export default async function adminRoutes(fastify, opts) {
+function resolveOrchestratorUrl(rawUrl) {
+    if (!rawUrl || rawUrl === 'mock') return null;
+    const trimmed = rawUrl.trim().replace(/\/+$/, '');
+    if (!trimmed) return null;
+    if (trimmed.includes('/webhook/')) return trimmed;
+    return `${trimmed}/webhook/orchestrate`;
+}
 
+export default async function adminRoutes(fastify) {
     // POST /admin/override
     fastify.post('/admin/override', async (request, reply) => {
-        const { zone_id, trigger_id, severity } = request.body;
+        const body = request.body || {};
+        const zoneId = String(body.zone_id || '').trim();
+        const triggerId = String(body.trigger_id || '').trim();
+        const severity = String(body.severity || 'HIGH').toUpperCase();
+        const disruptionStart = new Date();
 
-        if (!zone_id || !trigger_id) {
+        if (!zoneId || !triggerId) {
             return reply.status(400).send({ error: 'zone_id and trigger_id are required' });
         }
 
         const client = await fastify.pg.connect();
         try {
-            // Verify zone exists
-            const zoneResult = await client.query('SELECT id FROM zones WHERE id = $1', [zone_id]);
+            const zoneResult = await client.query('SELECT id FROM zones WHERE id = $1', [zoneId]);
             if (zoneResult.rows.length === 0) {
-                return reply.status(404).send({ error: `Zone ${zone_id} not found` });
+                return reply.status(404).send({ error: `Zone ${zoneId} not found` });
             }
 
             const eventId = generateEventId();
-            const now = new Date();
-
-            // Create disruption_event record
             await client.query(
-                `INSERT INTO disruption_events (id, zone_id, trigger_id, severity, started_at)
-                 VALUES ($1, $2, $3, $4, $5)`,
-                [eventId, zone_id, trigger_id, severity || 'HIGH', now]
+                `INSERT INTO disruption_events (id, zone_id, trigger_id, severity, disruption_start, started_at)
+                 VALUES ($1, $2, $3, $4, $5, $5)`,
+                [eventId, zoneId, triggerId, severity, disruptionStart.toISOString()]
             );
 
-            // Forward to n8n Orchestrator
-            const n8nUrl = process.env.N8N_ORCHESTRATOR_URL;
+            const orchestratorUrl = resolveOrchestratorUrl(process.env.LANGGRAPH_ORCHESTRATOR_URL);
             let forwardStatus = 'skipped';
+            let orchestratorResponse = null;
 
-            if (n8nUrl && n8nUrl !== 'mock') {
+            if (orchestratorUrl) {
                 try {
-                    await axios.post(n8nUrl, {
-                        type: 'DISRUPTION_EVENT',
-                        zone_id,
-                        trigger_id,
-                        severity: severity || 'HIGH',
-                        disruption_start: now.toISOString(),
-                        event_id: eventId
-                    }, { timeout: 5000 });
+                    const response = await axios.post(
+                        orchestratorUrl,
+                        {
+                            type: 'DISRUPTION_EVENT',
+                            event_id: eventId,
+                            zone: zoneId,
+                            zone_id: zoneId,
+                            trigger_id: triggerId,
+                            severity,
+                            disruption_start: disruptionStart.toISOString(),
+                            disruption_end: null,
+                            affected_workers: []
+                        },
+                        { timeout: 7000 }
+                    );
                     forwardStatus = 'forwarded';
+                    orchestratorResponse = response.data ?? null;
                 } catch (err) {
-                    fastify.log.warn(`n8n forward failed: ${err.message}`);
+                    fastify.log.warn(`Orchestrator forward failed: ${err.message}`);
                     forwardStatus = 'forward_failed';
                 }
             } else {
-                fastify.log.info(`[MOCK] Would forward disruption event ${eventId} to n8n`);
                 forwardStatus = 'mock_logged';
             }
 
             return reply.send({
                 event_id: eventId,
-                status: forwardStatus
+                status: forwardStatus,
+                orchestrator_response: orchestratorResponse
             });
-
         } catch (err) {
             fastify.log.error(err);
             return reply.status(500).send({ error: 'Admin override failed', details: err.message });

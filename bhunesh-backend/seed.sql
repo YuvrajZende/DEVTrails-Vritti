@@ -8,6 +8,7 @@ DELETE FROM payouts;
 DELETE FROM claims;
 DELETE FROM policies;
 DELETE FROM disruption_events;
+DELETE FROM events;
 DELETE FROM workers;
 DELETE FROM zones;
 
@@ -34,13 +35,13 @@ INSERT INTO workers (id, phone, name, platform, partner_id, zone_id, language, d
 
 -- ===================== POLICIES =====================
 INSERT INTO policies (id, worker_id, week_start, week_end, premium_paid, coverage_cap, risk_score, status) VALUES
-('pol_0001', 'w_0001', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', 25.0, 500.0, 0.1, 'ACTIVE'),
-('pol_0002', 'w_0002', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', 25.0, 500.0, 0.2, 'ACTIVE'),
-('pol_0003', 'w_0003', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', 25.0, 500.0, 0.15, 'ACTIVE'),
-('pol_0004', 'w_0004', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', 25.0, 500.0, 0.3, 'ACTIVE'),
-('pol_0005', 'w_0005', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', 25.0, 500.0, 0.25, 'ACTIVE'),
-('pol_0006', 'w_0006', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', 25.0, 500.0, 0.1, 'ACTIVE'),
-('pol_0007', 'w_0007', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', 25.0, 500.0, 0.1, 'ACTIVE'),
-('pol_0008', 'w_0008', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', 25.0, 500.0, 0.2, 'ACTIVE'),
-('pol_0009', 'w_0009', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', 25.0, 500.0, 0.15, 'ACTIVE'),
-('pol_0010', 'w_0010', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', 25.0, 500.0, 0.1, 'ACTIVE');
+('pol_0001', 'w_0001', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 days', 25.0, 500.0, 0.1, 'ACTIVE'),
+('pol_0002', 'w_0002', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 days', 25.0, 500.0, 0.2, 'ACTIVE'),
+('pol_0003', 'w_0003', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 days', 25.0, 500.0, 0.15, 'ACTIVE'),
+('pol_0004', 'w_0004', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 days', 25.0, 500.0, 0.3, 'ACTIVE'),
+('pol_0005', 'w_0005', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 days', 25.0, 500.0, 0.25, 'ACTIVE'),
+('pol_0006', 'w_0006', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 days', 25.0, 500.0, 0.1, 'ACTIVE'),
+('pol_0007', 'w_0007', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 days', 25.0, 500.0, 0.1, 'ACTIVE'),
+('pol_0008', 'w_0008', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 days', 25.0, 500.0, 0.2, 'ACTIVE'),
+('pol_0009', 'w_0009', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 days', 25.0, 500.0, 0.15, 'ACTIVE'),
+('pol_0010', 'w_0010', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 days', 25.0, 500.0, 0.1, 'ACTIVE');

@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert } from 'react-native';
-import { useTranslation } from 'react-i18next';
+import { StatusBar, StyleSheet, Text } from 'react-native';
 import * as Location from 'expo-location';
+import { Feather } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import { AppCard, AppScreen, PrimaryButton, ScreenHeading } from '../ui/components';
+import { colors } from '../ui/theme';
 
 export default function LocationPermissionScreen({ navigation, route }: any) {
   const { t } = useTranslation();
@@ -13,76 +16,54 @@ export default function LocationPermissionScreen({ navigation, route }: any) {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
         setGranted(true);
-        setTimeout(() => {
-          navigation.navigate('PremiumQuote', params);
-        }, 500);
-      } else {
-        // Still allow proceeding for hackathon demo
-        navigation.navigate('PremiumQuote', params);
       }
     } catch {
-      // On emulators this may fail, still proceed
-      navigation.navigate('PremiumQuote', params);
+      // continue even when location fails in emulator environments
+    } finally {
+      setTimeout(() => navigation.navigate('PremiumQuote', params), 250);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
-      <Text style={styles.icon}>📍</Text>
-      <Text style={styles.title}>{t('location_title')}</Text>
-      <View style={styles.card}>
-        <Text style={styles.desc}>{t('location_desc')}</Text>
-      </View>
-      <TouchableOpacity
-        style={[styles.btn, granted ? styles.btnDone : styles.btnActive]}
-        onPress={handleAllow}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.btnText}>
-          {granted ? '✅' : ''} {t('allow_location')}
-        </Text>
-      </TouchableOpacity>
-    </View>
+    <AppScreen contentContainerStyle={styles.content}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.page} />
+      <ScreenHeading title={t('location_title')} subtitle={t('location_desc')} />
+
+      <AppCard variant="blue" style={styles.card}>
+        <Feather name="map-pin" size={34} color={colors.text} style={styles.icon} />
+        <Text style={styles.cardTitle}>Zone verification</Text>
+        <Text style={styles.cardBody}>Location is used to match delivery activity to disruption events and payout eligibility.</Text>
+      </AppCard>
+
+      <PrimaryButton title={granted ? 'Location enabled' : t('allow_location')} onPress={handleAllow} variant={granted ? 'amber' : 'black'} />
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A1628',
+  content: {
+    paddingBottom: 44,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  icon: { fontSize: 80, marginBottom: 20 },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 24,
-    textAlign: 'center',
   },
   card: {
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 32,
-    width: '100%',
+    marginBottom: 22,
+    alignItems: 'flex-start',
   },
-  desc: {
-    fontSize: 16,
-    color: '#CBD5E1',
-    lineHeight: 24,
-    textAlign: 'center',
+  icon: {
+    marginBottom: 16,
   },
-  btn: {
-    width: '100%',
-    paddingVertical: 18,
-    borderRadius: 16,
-    alignItems: 'center',
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: colors.text,
+    marginBottom: 8,
   },
-  btnActive: { backgroundColor: '#3B82F6', elevation: 4 },
-  btnDone: { backgroundColor: '#22C55E', elevation: 4 },
-  btnText: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
+  cardBody: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: colors.muted,
+    fontWeight: '600',
+  },
 });
+
+

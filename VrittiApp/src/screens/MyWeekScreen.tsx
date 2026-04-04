@@ -1,145 +1,294 @@
 import React from 'react';
-import { View, Text, StyleSheet, StatusBar } from 'react-native';
+import { StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { AppCard, AppScreen, HeaderAction, ScreenHeading } from '../ui/components';
+import { colors, formatCurrency } from '../ui/theme';
 
-const MOCK_WEEK = {
-  earnings: 3800,
-  daysActive: 5,
-  disruptionDays: 1,
-};
+const weekData = [
+  { label: '27 Mar', operations: 0.4, earnings: 0.8 },
+  { label: '28 Mar', operations: 0.3, earnings: 0.6 },
+  { label: '29 Mar', operations: 0.55, earnings: 0.42, opLabel: '5 rides', earnLabel: 'Rs 870' },
+  { label: '30 Mar', operations: 0.46, earnings: 0.36 },
+];
 
 export default function MyWeekScreen() {
   const { t } = useTranslation();
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
-      <Text style={styles.title}>📊 {t('my_week')}</Text>
+    <AppScreen contentContainerStyle={styles.content}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.page} />
 
-      {/* Earnings */}
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>{t('earnings_this_week')}</Text>
-        <Text style={styles.cardValueBig}>₹{MOCK_WEEK.earnings.toLocaleString('en-IN')}</Text>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '76%' }]} />
+      <View style={styles.topRow}>
+        <HeaderAction icon={<Feather name="menu" size={18} color={colors.text} />} />
+        <View style={styles.topActions}>
+          <HeaderAction icon={<Feather name="settings" size={18} color={colors.text} />} />
+          <HeaderAction
+            wide
+            label="New week"
+            icon={<Feather name="plus" size={16} color={colors.text} />}
+          />
         </View>
       </View>
 
-      {/* Stats Row */}
-      <View style={styles.statsRow}>
-        <View style={[styles.statCard, { borderColor: '#22C55E' }]}>
-          <Text style={styles.statValue}>{MOCK_WEEK.daysActive}</Text>
-          <Text style={styles.statLabel}>{t('days_active')}</Text>
-        </View>
-        <View style={[styles.statCard, { borderColor: '#EAB308' }]}>
-          <Text style={styles.statValue}>{MOCK_WEEK.disruptionDays}</Text>
-          <Text style={styles.statLabel}>{t('disruption_days')}</Text>
-        </View>
-      </View>
+      <ScreenHeading title="Statistics" subtitle="A cleaner summary of activity, earnings, and disruption exposure for the current work cycle." />
 
-      {/* Weekly Progress */}
-      <View style={styles.weekRow}>
-        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
-          <View key={day} style={styles.dayCol}>
-            <View
-              style={[
-                styles.dayDot,
-                i < MOCK_WEEK.daysActive
-                  ? styles.dayActive
-                  : i === MOCK_WEEK.daysActive
-                  ? styles.dayDisruption
-                  : styles.dayInactive,
-              ]}
-            />
-            <Text style={styles.dayText}>{day}</Text>
+      <AppCard style={styles.chartCard}>
+        <View style={styles.chartHeader}>
+          <Text style={styles.chartTitle}>Usage</Text>
+          <View style={styles.yearBadge}>
+            <Text style={styles.yearText}>2026</Text>
+            <Feather name="chevron-down" size={16} color={colors.text} />
           </View>
-        ))}
+        </View>
+
+        <View style={styles.chartColumns}>
+          {weekData.map((item) => (
+            <View key={item.label} style={styles.chartColumn}>
+              <View style={styles.chartStack}>
+                <View style={styles.chartGhosts}>
+                  {[0, 1, 2, 3, 4].map((index) => (
+                    <View key={index} style={styles.chartGhost} />
+                  ))}
+                </View>
+                <View style={[styles.chartBar, styles.chartBarPink, { height: `${item.earnings * 100}%` }]}>
+                  {item.earnLabel ? <Text style={styles.barTag}>{item.earnLabel}</Text> : null}
+                </View>
+                <View style={[styles.chartBar, styles.chartBarBlue, { height: `${item.operations * 100}%` }]}>
+                  {item.opLabel ? <Text style={styles.barTag}>{item.opLabel}</Text> : null}
+                </View>
+              </View>
+              <Text style={styles.chartLabel}>{item.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.legendRow}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#BFDBFE' }]} />
+            <Text style={styles.legendText}>Operations</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#FBCFE8' }]} />
+            <Text style={styles.legendText}>{t('earnings_this_week')}</Text>
+          </View>
+        </View>
+      </AppCard>
+
+      <View style={styles.metricsGrid}>
+        <AppCard variant="pink" style={styles.metricCard}>
+          <Text style={styles.metricBig}>{formatCurrency(3800)}</Text>
+          <Text style={styles.metricTitle}>{t('earnings_this_week')}</Text>
+          <Text style={styles.metricBody}>Strong weekday trend with a smaller weekend drop.</Text>
+        </AppCard>
+
+        <AppCard variant="blue" style={styles.metricCard}>
+          <Text style={styles.metricBig}>5</Text>
+          <Text style={styles.metricTitle}>{t('days_active')}</Text>
+          <Text style={styles.metricBody}>You stayed active for most of the current cycle.</Text>
+        </AppCard>
       </View>
-    </View>
+
+      <AppCard style={styles.recommendCard}>
+        <Text style={styles.recommendTitle}>Recommended next steps</Text>
+        <View style={styles.recommendGrid}>
+          <View style={styles.recommendItem}>
+            <View style={[styles.recommendIcon, { backgroundColor: '#FDF2F8' }]}>
+              <Feather name="users" size={18} color={colors.text} />
+            </View>
+            <Text style={styles.recommendLabel}>Community</Text>
+          </View>
+          <View style={styles.recommendItem}>
+            <View style={[styles.recommendIcon, { backgroundColor: '#DBEAFE' }]}>
+              <Feather name="book-open" size={18} color={colors.text} />
+            </View>
+            <Text style={styles.recommendLabel}>Academy</Text>
+          </View>
+        </View>
+      </AppCard>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A1628',
-    padding: 24,
-    paddingTop: 60,
+  content: {
+    paddingBottom: 140,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#FFFFFF',
+  topRow: {
+    marginTop: 4,
+    marginBottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  topActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  chartCard: {
+    marginBottom: 18,
+  },
+  chartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 24,
   },
-  card: {
-    backgroundColor: '#1E293B',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 16,
+  chartTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: colors.text,
   },
-  cardLabel: {
-    fontSize: 14,
-    color: '#94A3B8',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
+  yearBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  cardValueBig: {
-    fontSize: 40,
+  yearText: {
+    fontSize: 12,
     fontWeight: '800',
-    color: '#22C55E',
-    marginBottom: 12,
+    color: colors.text,
   },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#334155',
-    borderRadius: 4,
+  chartColumns: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginBottom: 22,
+    gap: 8,
+  },
+  chartColumn: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  chartStack: {
+    width: '100%',
+    height: 220,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  chartGhosts: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  chartGhost: {
+    height: 32,
+    borderRadius: 14,
+    backgroundColor: 'rgba(17, 24, 39, 0.05)',
+  },
+  chartBar: {
+    width: '72%',
+    borderRadius: 18,
+    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 8,
+  },
+  chartBarPink: {
+    backgroundColor: '#FBCFE8',
+  },
+  chartBarBlue: {
+    backgroundColor: '#BFDBFE',
+  },
+  barTag: {
+    position: 'absolute',
+    top: -34,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 10,
+    backgroundColor: colors.black,
+    color: colors.white,
+    fontSize: 10,
+    fontWeight: '800',
     overflow: 'hidden',
   },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#22C55E',
+  chartLabel: {
+    marginTop: 8,
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.softText,
+  },
+  legendRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 18,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
     borderRadius: 4,
   },
-  statsRow: {
-    flexDirection: 'row',
-    marginBottom: 24,
-    justifyContent: 'space-between',
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    borderLeftWidth: 4,
-    marginHorizontal: 6,
-  },
-  statValue: {
-    fontSize: 32,
+  legendText: {
+    fontSize: 11,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: colors.muted,
+  },
+  metricsGrid: {
+    gap: 14,
+    marginBottom: 18,
+  },
+  metricCard: {
+    gap: 10,
+  },
+  metricBig: {
+    fontSize: 34,
+    lineHeight: 38,
+    fontWeight: '900',
+    color: colors.text,
+  },
+  metricTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  metricBody: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.muted,
+    fontWeight: '600',
+  },
+  recommendCard: {
     marginBottom: 4,
   },
-  statLabel: {
-    fontSize: 12,
-    color: '#94A3B8',
-    fontWeight: '600',
-    textAlign: 'center',
+  recommendTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: colors.text,
+    marginBottom: 16,
   },
-  weekRow: {
+  recommendGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 20,
+    gap: 14,
   },
-  dayCol: { alignItems: 'center' },
-  dayDot: { width: 28, height: 28, borderRadius: 14 },
-  dayActive: { backgroundColor: '#22C55E' },
-  dayDisruption: { backgroundColor: '#EAB308' },
-  dayInactive: { backgroundColor: '#334155' },
-  dayText: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginTop: 8 },
+  recommendItem: {
+    flex: 1,
+    borderRadius: 24,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+  },
+  recommendIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  recommendLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+  },
 });

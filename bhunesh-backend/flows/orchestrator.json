@@ -1,0 +1,117 @@
+{
+  "name": "Orchestrator",
+
+  "nodes": [
+
+    {
+      "id": "webhook",
+      "name": "Event Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [200, 300],
+      "parameters": {
+        "path": "orchestrator",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      }
+    },
+
+    {
+      "id": "if",
+      "name": "Severity Check",
+      "type": "n8n-nodes-base.if",
+      "position": [450, 300],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.severity }}",
+              "operation": "equal",
+              "value2": "high"
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "id": "call",
+      "name": "Call Response Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [700, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-production-dca8.up.railway.app/webhook/response",
+        "sendBody": true,
+        "bodyParametersJson": "={{ $json }}"
+      }
+    },
+
+    {
+      "id": "insert",
+      "name": "Insert DB",
+      "type": "n8n-nodes-base.postgres",
+      "position": [700, 400],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO events(zone,type,severity) VALUES('{{ $json.zone }}','{{ $json.type }}','{{ $json.severity }}')"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "postgresql://neondb_owner:npg_7mQUOejGdH4I@ep-snowy-grass-a1wk1jtu-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require",
+          "name": "Postgres account"
+        }
+      }
+    },
+
+    {
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [950, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      }
+    }
+
+  ],
+
+  "connections": {
+
+    "Event Webhook": {
+      "main": [
+        [
+          { "node": "Severity Check", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+
+    "Severity Check": {
+      "main": [
+        [
+          { "node": "Call Response Webhook", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Insert DB", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+
+    "Call Response Webhook": {
+      "main": [
+        [
+          { "node": "Respond", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+
+    "Insert DB": {
+      "main": [
+        [
+          { "node": "Respond", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+
+  }
+}

@@ -1,75 +1,102 @@
-// Policy ID counter
-let policyCounter = 0;
-
 function generatePolicyId() {
-    policyCounter++;
-    return `pol_${Date.now()}_${String(policyCounter).padStart(3, '0')}`;
+    return `pol_${Date.now()}_${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 }
 
-// Get next Monday from today (UTC)
-function getNextMonday() {
-    const now = new Date();
-    const day = now.getUTCDay(); // 0=Sun, 1=Mon, ...
-    const daysUntilMonday = day === 0 ? 1 : (8 - day);
-    const monday = new Date(now);
-    monday.setUTCDate(now.getUTCDate() + daysUntilMonday);
-    monday.setUTCHours(0, 0, 0, 0);
-    return monday;
+function toDateOnly(date) {
+    return new Date(date).toISOString().slice(0, 10);
 }
 
-// Get Sunday after a given Monday
-function getSundayAfter(monday) {
-    const sunday = new Date(monday);
-    sunday.setUTCDate(monday.getUTCDate() + 6);
-    sunday.setUTCHours(23, 59, 59, 999);
+// Monday 00:00 UTC of the next week.
+function getNextMondayUtc(from = new Date()) {
+    const date = new Date(from);
+    const day = date.getUTCDay(); // 0=Sun, 1=Mon
+    const daysUntilMonday = day === 0 ? 1 : 8 - day;
+    date.setUTCDate(date.getUTCDate() + daysUntilMonday);
+    date.setUTCHours(0, 0, 0, 0);
+    return date;
+}
+
+function getSundayUtc(mondayUtc) {
+    const sunday = new Date(mondayUtc);
+    sunday.setUTCDate(mondayUtc.getUTCDate() + 6);
+    sunday.setUTCHours(0, 0, 0, 0);
     return sunday;
 }
 
-export default async function policyRoutes(fastify, opts) {
+function parseNumber(value, fallback) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+}
 
+export default async function policyRoutes(fastify) {
     // POST /policy/activate
     fastify.post('/policy/activate', async (request, reply) => {
-        const { worker_id, payment_reference } = request.body;
+        const { worker_id: workerId, payment_reference: paymentReference } = request.body || {};
 
-        if (!worker_id) {
+        if (!workerId) {
             return reply.status(400).send({ error: 'worker_id is required' });
+        }
+        if (!paymentReference) {
+            return reply.status(400).send({ error: 'payment_reference is required' });
         }
 
         const client = await fastify.pg.connect();
         try {
-            // Check worker exists
-            const workerResult = await client.query('SELECT * FROM workers WHERE id = $1', [worker_id]);
+            const workerResult = await client.query(
+                `SELECT id, latest_risk_score, latest_premium_tier, latest_coverage_cap
+                 FROM workers
+                 WHERE id = $1`,
+                [workerId]
+            );
             if (workerResult.rows.length === 0) {
-                return reply.status(404).send({ error: `Worker ${worker_id} not found` });
+                return reply.status(404).send({ error: `Worker ${workerId} not found` });
+            }
+            const worker = workerResult.rows[0];
+
+            const weekStart = getNextMondayUtc();
+            const weekEnd = getSundayUtc(weekStart);
+            const weekStartDate = toDateOnly(weekStart);
+            const weekEndDate = toDateOnly(weekEnd);
+
+            const existingPolicyResult = await client.query(
+                `SELECT id, week_start, week_end, coverage_cap
+                 FROM policies
+                 WHERE worker_id = $1 AND week_start = $2::date
+                 LIMIT 1`,
+                [workerId, weekStartDate]
+            );
+
+            if (existingPolicyResult.rows.length > 0) {
+                const existing = existingPolicyResult.rows[0];
+                return reply.send({
+                    policy_id: existing.id,
+                    week_start: toDateOnly(existing.week_start),
+                    week_end: toDateOnly(existing.week_end),
+                    coverage_cap: existing.coverage_cap,
+                    message: 'Policy already active for this week'
+                });
             }
 
-            const weekStart = getNextMonday();
-            const weekEnd = getSundayAfter(weekStart);
+            const premiumPaid = parseNumber(request.body?.premium, worker.latest_premium_tier ?? 49);
+            const coverageCap = parseNumber(request.body?.coverage_cap, worker.latest_coverage_cap ?? 800);
+            const riskScore = parseNumber(request.body?.risk_score, worker.latest_risk_score ?? 0.4);
             const policyId = generatePolicyId();
 
-            // We need to fetch the worker's risk tier. For this hackathon, since 
-            // onboarding returns the premium but doesn't save it to the worker row, 
-            // the frontend should ideally pass it. Wait, the frontend doesn't pass it.
-            // Let's modify the frontend later to pass it, or we can just fetch it here.
-            // But onboarding already calculated it. Let's add premium_tier and coverage_cap to body.
-            
-            const premiumPaid = request.body.premium || 49;
-            const coverageCap = request.body.coverage_cap || 800;
-            const riskScore = request.body.risk_score || 0.40;
-
             await client.query(
-                `INSERT INTO policies (id, worker_id, week_start, week_end, premium_paid, coverage_cap, risk_score, status)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, 'ACTIVE')`,
-                [policyId, worker_id, weekStart.toISOString().split('T')[0], weekEnd.toISOString().split('T')[0], premiumPaid, coverageCap, riskScore]
+                `INSERT INTO policies (
+                    id, worker_id, week_start, week_end, premium_paid, coverage_cap, risk_score, status
+                ) VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, 'ACTIVE'
+                )`,
+                [policyId, workerId, weekStartDate, weekEndDate, premiumPaid, coverageCap, riskScore]
             );
 
             return reply.status(201).send({
                 policy_id: policyId,
-                week_start: weekStart.toISOString().split('T')[0],
-                week_end: weekEnd.toISOString().split('T')[0],
+                week_start: weekStartDate,
+                week_end: weekEndDate,
                 coverage_cap: coverageCap
             });
-
         } catch (err) {
             fastify.log.error(err);
             return reply.status(500).send({ error: 'Policy activation failed', details: err.message });
@@ -80,20 +107,24 @@ export default async function policyRoutes(fastify, opts) {
 
     // GET /policy/status/:worker_id
     fastify.get('/policy/status/:worker_id', async (request, reply) => {
-        const { worker_id } = request.params;
+        const { worker_id: workerId } = request.params;
 
         const client = await fastify.pg.connect();
         try {
-            // Get the most recent policy for this worker
             const policyResult = await client.query(
-                `SELECT * FROM policies WHERE worker_id = $1 ORDER BY created_at DESC LIMIT 1`,
-                [worker_id]
+                `SELECT *
+                 FROM policies
+                 WHERE worker_id = $1
+                 ORDER BY week_end DESC, created_at DESC
+                 LIMIT 1`,
+                [workerId]
             );
 
             if (policyResult.rows.length === 0) {
                 return reply.send({
                     status: 'NO_POLICY',
                     message: 'No policy found for this worker',
+                    premium_amount: 0,
                     coverage_cap: 0,
                     renewal_date: null,
                     last_payout: null
@@ -101,40 +132,46 @@ export default async function policyRoutes(fastify, opts) {
             }
 
             const policy = policyResult.rows[0];
-            const today = new Date();
-            const weekEnd = new Date(policy.week_end);
-            const weekStart = new Date(policy.week_start);
+            const today = new Date().toISOString().slice(0, 10);
+            const weekStart = toDateOnly(policy.week_start);
+            const weekEnd = toDateOnly(policy.week_end);
 
-            // Determine status
-            let status;
-            if (today > weekEnd) {
+            let status = 'ACTIVE';
+            if (policy.status === 'CANCELLED') {
                 status = 'EXPIRED';
-            } else if (today.toISOString().split('T')[0] === weekEnd.toISOString().split('T')[0]) {
+            } else if (today > weekEnd) {
+                status = 'EXPIRED';
+            } else if (today === weekEnd) {
                 status = 'RENEW_TODAY';
-            } else if (today >= weekStart && today <= weekEnd) {
+            } else if (today < weekStart) {
                 status = 'ACTIVE';
             } else {
-                status = 'ACTIVE'; // Policy for upcoming week
+                status = 'ACTIVE';
             }
 
-            // Get last payout
             const payoutResult = await client.query(
-                `SELECT amount, paid_at FROM payouts WHERE worker_id = $1 ORDER BY created_at DESC LIMIT 1`,
-                [worker_id]
+                `SELECT amount, paid_at
+                 FROM payouts
+                 WHERE worker_id = $1
+                 ORDER BY COALESCE(paid_at, created_at) DESC
+                 LIMIT 1`,
+                [workerId]
             );
 
             const lastPayout = payoutResult.rows.length > 0
-                ? { amount: payoutResult.rows[0].amount, paid_at: payoutResult.rows[0].paid_at }
+                ? {
+                    amount: payoutResult.rows[0].amount,
+                    paid_at: payoutResult.rows[0].paid_at
+                }
                 : null;
 
             return reply.send({
                 status,
                 premium_amount: policy.premium_paid,
                 coverage_cap: policy.coverage_cap,
-                renewal_date: policy.week_end,
+                renewal_date: weekEnd,
                 last_payout: lastPayout
             });
-
         } catch (err) {
             fastify.log.error(err);
             return reply.status(500).send({ error: 'Failed to get policy status', details: err.message });

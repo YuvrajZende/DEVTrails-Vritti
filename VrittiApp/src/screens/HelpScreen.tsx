@@ -1,25 +1,23 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Linking, Alert } from 'react-native';
-import { useTranslation } from 'react-i18next';
+import { Alert, Linking, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation, CommonActions } from '@react-navigation/native';
+import { CommonActions, useNavigation } from '@react-navigation/native';
+import { Feather } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import { AppCard, AppScreen, PrimaryButton, ScreenHeading } from '../ui/components';
+import { colors } from '../ui/theme';
 
-const FAQS = [
-  { key: 'faq_what_is', emoji: '❓' },
-  { key: 'faq_how_paid', emoji: '💸' },
-  { key: 'faq_held', emoji: '⏸️' },
-  { key: 'faq_how_renew', emoji: '🔄' },
-  { key: 'faq_shield', emoji: '🛡️' },
+const faqKeys = [
+  'faq_what_is',
+  'faq_how_paid',
+  'faq_held',
+  'faq_how_renew',
+  'faq_shield',
 ] as const;
 
 export default function HelpScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
-
-  const handleFAQ = (key: string) => {
-    // In production: use expo-av to play pre-recorded Hindi audio
-    // For hackathon: just show a simple alert or do nothing
-  };
 
   const handleWhatsApp = () => {
     Linking.openURL('https://wa.me/919999999999');
@@ -27,128 +25,114 @@ export default function HelpScreen() {
 
   const handleResetSession = () => {
     Alert.alert(
-      "Reset Session",
-      "Are you sure you want to clear your data and return to the language screen?",
+      'Reset session',
+      'Clear local app data and return to language selection?',
       [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Yes, Reset", 
-          style: "destructive",
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
           onPress: async () => {
             await AsyncStorage.clear();
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
-                routes: [{ name: 'LanguageSelect' }],
+                routes: [{ name: 'LanguageSelect' as never }],
               })
             );
-          }
-        }
+          },
+        },
       ]
     );
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
-      <Text style={styles.title}>🎧 {t('help')}</Text>
+    <AppScreen contentContainerStyle={styles.content}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.page} />
+
+      <ScreenHeading title="Support" subtitle="The help area now follows the same high-contrast card language as the GigShield reference." />
 
       <View style={styles.faqList}>
-        {FAQS.map((faq) => (
-          <TouchableOpacity
-            key={faq.key}
-            style={styles.faqBtn}
-            onPress={() => handleFAQ(faq.key)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.faqEmoji}>{faq.emoji}</Text>
-            <Text style={styles.faqText}>{t(faq.key)}</Text>
-            <Text style={styles.playIcon}>🔊</Text>
-          </TouchableOpacity>
+        {faqKeys.map((faqKey) => (
+          <AppCard key={faqKey} style={styles.faqCard}>
+            <View style={styles.faqIcon}>
+              <Feather name="help-circle" size={20} color={colors.text} />
+            </View>
+            <Text style={styles.faqText}>{t(faqKey)}</Text>
+            <View style={styles.faqArrow}>
+              <Feather name="arrow-up-right" size={18} color={colors.white} />
+            </View>
+          </AppCard>
         ))}
       </View>
 
-      <TouchableOpacity
-        style={styles.whatsappBtn}
-        onPress={handleWhatsApp}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.whatsappEmoji}>💬</Text>
-        <Text style={styles.whatsappText}>{t('whatsapp_support')}</Text>
-      </TouchableOpacity>
+      <PrimaryButton title={t('whatsapp_support')} onPress={handleWhatsApp} style={styles.buttonSpacing} />
 
-      <TouchableOpacity
-        style={styles.resetBtn}
-        onPress={handleResetSession}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.resetEmoji}>⚠️</Text>
-        <Text style={styles.resetText}>Reset App Session</Text>
-      </TouchableOpacity>
-    </View>
+      <Pressable onPress={handleResetSession} style={({ pressed }) => [styles.resetButton, pressed && styles.resetPressed]}>
+        <Feather name="alert-triangle" size={18} color={colors.white} />
+        <Text style={styles.resetText}>Reset app session</Text>
+      </Pressable>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A1628',
-    padding: 24,
-    paddingTop: 60,
+  content: {
+    paddingBottom: 140,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 24,
+  faqList: {
+    gap: 14,
+    marginBottom: 18,
   },
-  faqList: { flex: 1 },
-  faqBtn: {
+  faqCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 10,
+    gap: 14,
   },
-  faqEmoji: { fontSize: 28, marginRight: 14 },
+  faqIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 18,
+    backgroundColor: 'rgba(17, 24, 39, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   faqText: {
     flex: 1,
-    fontSize: 16,
-    color: '#CBD5E1',
-    fontWeight: '600',
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '800',
+    color: colors.text,
   },
-  playIcon: { fontSize: 20 },
-  whatsappBtn: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  faqArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.black,
     alignItems: 'center',
-    backgroundColor: '#25D366',
-    borderRadius: 16,
-    padding: 18,
-    marginTop: 16,
-    elevation: 4,
-  },
-  whatsappEmoji: { fontSize: 24, marginRight: 10 },
-  whatsappText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  resetBtn: {
-    flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#EF4444',
-    borderRadius: 16,
-    padding: 18,
-    marginTop: 16,
-    elevation: 4,
   },
-  resetEmoji: { fontSize: 24, marginRight: 10 },
+  buttonSpacing: {
+    marginBottom: 14,
+  },
+  resetButton: {
+    minHeight: 58,
+    borderRadius: 22,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 4,
+  },
+  resetPressed: {
+    opacity: 0.92,
+  },
   resetText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+    color: colors.white,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
 });

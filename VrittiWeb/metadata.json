@@ -1,0 +1,5 @@
+{
+  "name": "Vritti",
+  "description": "GigShield Interface - Parametric income insurance for gig delivery workers.",
+  "requestFramePermissions": ["geolocation"]
+}

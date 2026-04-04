@@ -4,6 +4,7 @@
 -- ============================================================
 
 -- Drop existing tables (in dependency order) for clean re-creation
+DROP TABLE IF EXISTS events CASCADE;
 DROP TABLE IF EXISTS payouts CASCADE;
 DROP TABLE IF EXISTS claims CASCADE;
 DROP TABLE IF EXISTS policies CASCADE;
@@ -39,6 +40,10 @@ CREATE TABLE workers (
     is_active           BOOLEAN NOT NULL DEFAULT true,
     tenure_weeks        INT NOT NULL DEFAULT 0,
     avg_weekly_earnings FLOAT NOT NULL DEFAULT 0,
+    latest_risk_score   FLOAT,
+    latest_premium_tier INT,
+    latest_coverage_cap FLOAT,
+    last_quote_at       TIMESTAMP,
     created_at          TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
@@ -52,7 +57,8 @@ CREATE TABLE policies (
     coverage_cap    FLOAT NOT NULL,
     risk_score      FLOAT,
     status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE(worker_id, week_start)
 );
 
 -- 4. CLAIMS — One per worker per disruption event
@@ -60,7 +66,7 @@ CREATE TABLE claims (
     id              VARCHAR(30) PRIMARY KEY,
     policy_id       VARCHAR(30) NOT NULL REFERENCES policies(id),
     worker_id       VARCHAR(20) NOT NULL REFERENCES workers(id),
-    trigger_id      VARCHAR(5) NOT NULL,
+    trigger_id      VARCHAR(50) NOT NULL,
     initiated_at    TIMESTAMP NOT NULL DEFAULT NOW(),
     fraud_score     FLOAT,
     recommendation  VARCHAR(20),
@@ -72,7 +78,7 @@ CREATE TABLE claims (
 -- 5. PAYOUTS — UPI payout records
 CREATE TABLE payouts (
     id                  VARCHAR(30) PRIMARY KEY,
-    claim_id            VARCHAR(30) NOT NULL REFERENCES claims(id),
+    claim_id            VARCHAR(30) NOT NULL UNIQUE REFERENCES claims(id),
     worker_id           VARCHAR(20) NOT NULL REFERENCES workers(id),
     amount              FLOAT NOT NULL,
     upi_id              VARCHAR(100) NOT NULL,
@@ -84,11 +90,21 @@ CREATE TABLE payouts (
 
 -- 6. DISRUPTION_EVENTS — Logged disruptions per zone
 CREATE TABLE disruption_events (
-    id          VARCHAR(30) PRIMARY KEY,
+    id          VARCHAR(30) PRIMARY KEY DEFAULT ('evt_' || SUBSTRING(MD5(RANDOM()::text || CLOCK_TIMESTAMP()::text), 1, 20)),
     zone_id     VARCHAR(20) NOT NULL REFERENCES zones(id),
-    trigger_id  VARCHAR(5) NOT NULL,
+    trigger_id  VARCHAR(50) NOT NULL,
     severity    VARCHAR(10) NOT NULL,
-    started_at  TIMESTAMP NOT NULL,
+    disruption_start TIMESTAMP NOT NULL DEFAULT NOW(),
+    started_at  TIMESTAMP NOT NULL DEFAULT NOW(),
     resolved_at TIMESTAMP,
+    created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Compatibility table for legacy n8n flow JSONs (t2/orchestrator.json)
+CREATE TABLE events (
+    id          BIGSERIAL PRIMARY KEY,
+    zone        VARCHAR(20),
+    type        VARCHAR(50),
+    severity    VARCHAR(20),
     created_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );

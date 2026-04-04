@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, StatusBar, StyleSheet, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { AppCard, AppScreen, InputField, PrimaryButton, ScreenHeading } from '../ui/components';
+import { colors } from '../ui/theme';
 
 export default function PartnerIDScreen({ navigation, route }: any) {
   const { t } = useTranslation();
@@ -10,97 +12,73 @@ export default function PartnerIDScreen({ navigation, route }: any) {
   const [verifying, setVerifying] = useState(false);
 
   const handleVerify = async () => {
-    if (partnerId.length < 6) return;
+    if (partnerId.length < 6) {
+      return;
+    }
+
     setVerifying(true);
-    // Mock verification delay
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((resolve) => setTimeout(resolve, 1200));
     setVerifying(false);
     navigation.navigate('LocationPermission', { phone, platform, partnerId });
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
-      <Text style={styles.emoji}>🪪</Text>
-      <Text style={styles.title}>{t('enter_partner_id')}</Text>
-      <Text style={styles.hint}>{t('partner_id_hint')}</Text>
-      <TextInput
-        style={styles.input}
-        value={partnerId}
-        onChangeText={setPartnerId}
-        placeholder="AMZ-001234"
-        placeholderTextColor="#64748B"
-        autoCapitalize="characters"
-        autoFocus
-      />
+    <AppScreen contentContainerStyle={styles.content}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.page} />
+      <Text style={styles.stepText}>Step 5 of 5</Text>
+      <ScreenHeading title="Partner ID" subtitle={t('partner_id_hint')} />
+
+      <AppCard style={styles.card}>
+        <InputField
+          label={t('enter_partner_id')}
+          placeholder="AMZ-001234"
+          autoCapitalize="characters"
+          autoFocus
+          value={partnerId}
+          onChangeText={setPartnerId}
+          helper="The worker ID is used for policy linking and payout eligibility checks."
+        />
+      </AppCard>
+
       {verifying ? (
-        <View style={styles.loadingRow}>
-          <ActivityIndicator size="large" color="#22C55E" />
+        <AppCard style={styles.loadingCard}>
+          <ActivityIndicator size="small" color={colors.black} />
           <Text style={styles.loadingText}>{t('verifying')}</Text>
-        </View>
+        </AppCard>
       ) : (
-        <TouchableOpacity
-          style={[styles.btn, partnerId.length >= 6 ? styles.btnActive : styles.btnDisabled]}
-          onPress={handleVerify}
-          disabled={partnerId.length < 6}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.btnText}>{t('verify')}</Text>
-        </TouchableOpacity>
+        <PrimaryButton title="Verify and continue" onPress={handleVerify} disabled={partnerId.length < 6} />
       )}
-    </View>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A1628',
+  content: {
+    paddingBottom: 44,
     justifyContent: 'center',
+  },
+  stepText: {
+    fontSize: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: colors.softText,
+    marginBottom: 12,
+  },
+  card: {
+    marginBottom: 20,
+  },
+  loadingCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 24,
-  },
-  emoji: { fontSize: 64, marginBottom: 16 },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  hint: {
-    fontSize: 14,
-    color: '#94A3B8',
-    marginBottom: 28,
-    textAlign: 'center',
-  },
-  input: {
-    width: '100%',
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    fontSize: 22,
-    color: '#FFFFFF',
-    textAlign: 'center',
-    letterSpacing: 2,
-    marginBottom: 24,
-  },
-  loadingRow: {
-    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
   },
   loadingText: {
-    fontSize: 16,
-    color: '#94A3B8',
-    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
   },
-  btn: {
-    width: '100%',
-    paddingVertical: 18,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  btnActive: { backgroundColor: '#22C55E', elevation: 4 },
-  btnDisabled: { backgroundColor: '#334155' },
-  btnText: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
 });
+
+

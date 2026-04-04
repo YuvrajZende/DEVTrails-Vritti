@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  /* Base Layout */
+  --color-bg-base: #F5F7F6; /* very light grey / soft green tint */
+  
+  /* Primary Accents */
+  --color-brand-primary: #6366F1; /* soft indigo / blue */
+  --color-brand-secondary: #F472B6; /* pastel pink */
+  
+  /* Card Colors */
+  --color-card-blue: #E0E7FF;
+  --color-card-pink: #FCE7F3;
+  --color-card-grey: #F3F4F6;
+  
+  /* Status Indicators */
+  --color-status-active: #D1FAE5; /* Soft Green */
+  --color-status-active-text: #065F46;
+  --color-status-warning: #FEF3C7; /* Soft Yellow/Orange */
+  --color-status-warning-text: #92400E;
+  --color-status-error: #FEE2E2; /* Soft Red */
+  --color-status-error-text: #991B1B;
+  --color-status-neutral: #F3F4F6; /* Soft Grey */
+  --color-status-neutral-text: #374151;
+
+  /* Typography */
+  --color-text-primary: #111827;
+  --color-text-secondary: #6B7280;
+}
+
+@layer base {
+  body {
+    @apply bg-bg-base text-text-primary antialiased;
+    background-image: radial-gradient(#6366f110 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+}
+
+.glass-card {
+  @apply bg-white border-none rounded-[24px];
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+}
+
+.status-chip {
+  @apply px-3 py-1 rounded-full text-[11px] font-semibold tracking-wider uppercase;
+}
+
+.pill-button {
+  @apply rounded-full font-semibold transition-all duration-200 active:scale-95 bg-gradient-to-r from-brand-primary to-[#4F46E5] text-white;
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.2);
+}
+
+.pill-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(99, 102, 241, 0.3);
+}

@@ -1,22 +1,27 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, StatusBar, ActivityIndicator } from 'react-native';
-import { useTranslation } from 'react-i18next';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import { AppCard, AppScreen, Chip, HeaderAction, ScreenHeading } from '../ui/components';
+import { colors, formatCurrency } from '../ui/theme';
 import { getPayoutHistory, PayoutRecord } from '../services/api';
 
-// Map trigger_id from backend (T1-T5) to display icons
-const TRIGGER_ICONS: Record<string, string> = {
-  T1: '🌧️',  // Flood/Rain
-  T2: '🌫️',  // AQI
-  T3: '🌡️',  // Heatwave
-  T4: '🚫',  // Curfew
-  T5: '⚡',  // Other
+const filters = ['All', 'Paid', 'Pending', 'Rejected'];
+
+const triggerMeta: Record<string, { label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; accent: 'teal' | 'amber' | 'blue' | 'pink' }> = {
+  T1: { label: 'Rain disruption', icon: 'weather-pouring', accent: 'teal' },
+  T2: { label: 'Air quality alert', icon: 'weather-dust', accent: 'amber' },
+  T3: { label: 'Heatwave alert', icon: 'white-balance-sunny', accent: 'amber' },
+  T4: { label: 'City curfew', icon: 'alert-octagon-outline', accent: 'pink' },
+  T5: { label: 'Emergency trigger', icon: 'flash-outline', accent: 'blue' },
 };
 
 export default function HistoryScreen() {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
+  const [filter, setFilter] = useState('All');
 
   useEffect(() => {
     loadHistory();
@@ -27,104 +32,277 @@ export default function HistoryScreen() {
       const workerId = (await AsyncStorage.getItem('@vritti_worker_id')) || 'WRK-DEMO';
       const data = await getPayoutHistory(workerId);
       setPayouts(data);
-    } catch {}
-    setLoading(false);
+    } catch {
+      setPayouts([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const renderItem = ({ item }: { item: PayoutRecord }) => (
-    <View style={styles.row}>
-      <Text style={styles.triggerIcon}>{TRIGGER_ICONS[item.trigger_id] || '⚡'}</Text>
-      <View style={styles.rowInfo}>
-        <Text style={styles.rowAmount}>₹{item.amount}</Text>
-        <Text style={styles.rowDate}>{item.paid_at || '—'}</Text>
-      </View>
-      <View style={[styles.badge, item.status?.toUpperCase() === 'PAID' ? styles.badgePaid : styles.badgePending]}>
-        <Text style={styles.badgeText}>{item.status?.toUpperCase() === 'PAID' ? '✅' : '⏳'}</Text>
-      </View>
-    </View>
-  );
+  const filteredPayouts = useMemo(() => {
+    if (filter === 'All') {
+      return payouts;
+    }
+
+    return payouts.filter((payout) => payout.status?.toLowerCase() === filter.toLowerCase());
+  }, [filter, payouts]);
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#22C55E" />
-      </View>
+      <AppScreen scroll={false} contentContainerStyle={styles.loadingState}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.page} />
+        <ActivityIndicator size="large" color={colors.black} />
+      </AppScreen>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
-      <Text style={styles.title}>💰 {t('history')}</Text>
-      {payouts.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>🛡️</Text>
-          <Text style={styles.emptyText}>{t('no_payouts')}</Text>
+    <AppScreen contentContainerStyle={styles.content}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.page} />
+
+      <View style={styles.topRow}>
+        <ScreenHeading title="History" subtitle="Payout events, neatly filtered and restyled to match the reference app." />
+        <View style={styles.topActions}>
+          <HeaderAction icon={<Feather name="search" size={18} color={colors.text} />} />
+          <HeaderAction icon={<Feather name="filter" size={18} color={colors.text} />} />
         </View>
+      </View>
+
+      <View style={styles.filterRow}>
+        {filters.map((item) => (
+          <Chip key={item} label={item} active={filter === item} onPress={() => setFilter(item)} />
+        ))}
+      </View>
+
+      {filteredPayouts.length === 0 ? (
+        <AppCard style={styles.emptyCard}>
+          <View style={styles.emptyIconWrap}>
+            <Feather name="clock" size={28} color={colors.softText} />
+          </View>
+          <Text style={styles.emptyTitle}>{t('no_payouts')}</Text>
+          <Text style={styles.emptyBody}>When the first approved event is paid out, it will appear here with amount and settlement date.</Text>
+        </AppCard>
       ) : (
         <FlatList
-          data={payouts}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.trigger_id}
+          data={filteredPayouts}
+          keyExtractor={(item, index) => item.payout_id || `payout-${index}`}
+          scrollEnabled={false}
           contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => {
+            const meta = triggerMeta[item.trigger_id] || triggerMeta.T5;
+            const paid = item.status?.toUpperCase() === 'PAID';
+            const dateText = item.paid_at ? new Date(item.paid_at).toLocaleDateString('en-IN') : 'Awaiting settlement';
+
+            return (
+              <AppCard key={item.payout_id} variant={meta.accent} style={styles.rowCard}>
+                <View style={styles.rowIcon}>
+                  <MaterialCommunityIcons name={meta.icon} size={26} color={colors.text} />
+                </View>
+
+                <View style={styles.rowBody}>
+                  <View style={styles.rowTitleWrap}>
+                    <Text style={styles.rowTitle}>{meta.label}</Text>
+                    <Feather
+                      name={paid ? 'arrow-up-right' : 'clock'}
+                      size={14}
+                      color={paid ? colors.success : colors.warning}
+                    />
+                  </View>
+                  <Text style={styles.rowDate}>{dateText}</Text>
+                </View>
+
+                <View style={styles.rowRight}>
+                  <Text style={styles.rowAmount}>{formatCurrency(item.amount)}</Text>
+                  <View style={[styles.statusPill, paid ? styles.statusPaid : styles.statusPending]}>
+                    <Text style={[styles.statusPillText, paid ? styles.statusPaidText : styles.statusPendingText]}>
+                      {paid ? 'Paid' : item.status || 'Pending'}
+                    </Text>
+                  </View>
+                </View>
+              </AppCard>
+            );
+          }}
         />
       )}
-    </View>
+
+      <AppCard style={styles.summaryCard}>
+        <View style={styles.summaryIcon}>
+          <Feather name="download" size={26} color="rgba(17, 24, 39, 0.25)" />
+        </View>
+        <Text style={styles.summaryTitle}>Need a detailed report?</Text>
+        <Text style={styles.summaryBody}>This UI keeps the reference card layout. Export wiring for PDF can be added next if you want actual downloads.</Text>
+        <Pressable style={styles.summaryButton}>
+          <Text style={styles.summaryButtonText}>Download PDF</Text>
+        </Pressable>
+      </AppCard>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A1628',
-    padding: 24,
-    paddingTop: 60,
+  content: {
+    paddingBottom: 140,
   },
-  center: {
+  loadingState: {
     flex: 1,
-    backgroundColor: '#0A1628',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 20,
+  topRow: {
+    marginBottom: 18,
+    gap: 14,
   },
-  list: {},
-  row: {
+  topActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 18,
+  },
+  list: {
+    gap: 14,
+  },
+  rowCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 10,
+    gap: 14,
   },
-  triggerIcon: { fontSize: 32, marginRight: 14 },
-  rowInfo: { flex: 1 },
-  rowAmount: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
-  rowDate: { fontSize: 13, color: '#94A3B8', marginTop: 2 },
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  badgePaid: { backgroundColor: '#166534' },
-  badgePending: { backgroundColor: '#854D0E' },
-  badgeText: { fontSize: 16 },
-  emptyCard: {
-    flex: 1,
-    justifyContent: 'center',
+  rowIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 20,
+    backgroundColor: colors.white,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  emptyIcon: { fontSize: 64, marginBottom: 16 },
-  emptyText: {
+  rowBody: {
+    flex: 1,
+  },
+  rowTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  rowTitle: {
     fontSize: 16,
-    color: '#94A3B8',
-    textAlign: 'center',
+    fontWeight: '900',
+    color: colors.text,
+  },
+  rowDate: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.softText,
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+  },
+  rowRight: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  rowAmount: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: colors.text,
+  },
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  statusPaid: {
+    backgroundColor: '#ECFDF5',
+    borderColor: 'rgba(29, 158, 117, 0.2)',
+  },
+  statusPaidText: {
+    color: colors.success,
+  },
+  statusPending: {
+    backgroundColor: '#FFFBEB',
+    borderColor: 'rgba(217, 119, 6, 0.2)',
+  },
+  statusPendingText: {
+    color: colors.warning,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    paddingVertical: 36,
+    marginBottom: 18,
+  },
+  emptyIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(17, 24, 39, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 16,
     lineHeight: 24,
-    paddingHorizontal: 20,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  emptyBody: {
+    marginTop: 10,
+    fontSize: 14,
+    lineHeight: 22,
+    color: colors.muted,
+    textAlign: 'center',
+  },
+  summaryCard: {
+    marginTop: 18,
+    marginBottom: 4,
+    alignItems: 'center',
+    borderStyle: 'dashed',
+  },
+  summaryIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(17, 24, 39, 0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  summaryBody: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: colors.muted,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  summaryButton: {
+    borderRadius: 999,
+    backgroundColor: colors.black,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  summaryButtonText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: colors.white,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
 });

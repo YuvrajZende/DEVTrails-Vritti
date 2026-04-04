@@ -1,0 +1,198 @@
+{
+  "name": "Weather AQI Trigger v3 Fixed",
+  "nodes": [
+
+    {
+      "id": "schedule",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [200,300],
+      "parameters": {
+        "rule": {
+          "interval":[{ "field":"minutes","minutesInterval":5 }]
+        }
+      }
+    },
+
+    {
+      "id": "weather",
+      "name": "Get Weather v3",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450,200],
+      "parameters": {
+        "url":"https://api.openweathermap.org/data/3.0/onecall",
+        "sendQuery":true,
+        "queryParameters":{
+          "parameters":[
+            { "name":"lat","value":"22.3072" },
+            { "name":"lon","value":"73.1812" },
+            { "name":"appid","value":"0c43b621ad1c54ce1ae5b47d63a61f61" },
+            { "name":"units","value":"metric" }
+          ]
+        }
+      }
+    },
+
+    {
+      "id": "aqi",
+      "name": "Get AQI",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450,420],
+      "parameters": {
+        "url":"https://api.waqi.info/feed/vadodara/",
+        "sendQuery":true,
+        "queryParameters":{
+          "parameters":[
+            { "name":"token","value":"196358:8d88b36e-83bd-4e18-98b5-30f72ef34703" }
+          ]
+        }
+      }
+    },
+
+    {
+      "id": "merge",
+      "name": "Merge Weather + AQI",
+      "type": "n8n-nodes-base.merge",
+      "position": [650,300],
+      "parameters": {
+        "mode":"wait"
+      }
+    },
+
+    {
+      "id": "check",
+      "name": "Threshold Check",
+      "type": "n8n-nodes-base.if",
+      "position": [850,300],
+      "parameters": {
+        "conditions": {
+          "combinator":"or",
+          "conditions":[
+
+            {
+              "leftValue":"={{ $node[\"Get Weather v3\"].json.current.feels_like }}",
+              "rightValue":45,
+              "operator":{
+                "type":"number",
+                "operation":"gte"
+              }
+            },
+
+            {
+              "leftValue":"={{ $node[\"Get AQI\"].json.data.aqi }}",
+              "rightValue":300,
+              "operator":{
+                "type":"number",
+                "operation":"gte"
+              }
+            }
+
+          ]
+        }
+      }
+    },
+
+    {
+      "id": "dedup",
+      "name": "Dedup Check",
+      "type": "n8n-nodes-base.postgres",
+      "position": [1050,300],
+      "parameters": {
+        "operation":"executeQuery",
+        "query":
+        "SELECT id FROM disruption_events WHERE zone_id='VAD-04' AND created_at > NOW() - INTERVAL '1 hour' LIMIT 1;"
+      }
+    },
+
+    {
+      "id": "build",
+      "name": "Build Payload",
+      "type": "n8n-nodes-base.code",
+      "position": [1250,300],
+      "parameters": {
+        "jsCode":
+"const w = $node['Get Weather v3'].json;\nconst a = $node['Get AQI'].json;\n\nreturn [{json:{zone_id:'VAD-04',trigger_id:'AUTO',severity:'MEDIUM',disruption_start:new Date().toISOString(),raw:{w,a}}}];"
+      }
+    },
+
+    {
+      "id": "insert",
+      "name": "Insert DB",
+      "type": "n8n-nodes-base.postgres",
+      "position": [1450,300],
+      "parameters": {
+        "operation":"executeQuery",
+        "query":
+"INSERT INTO disruption_events(zone_id,trigger_id,severity,disruption_start,created_at)\nVALUES('{{$json.zone_id}}','{{$json.trigger_id}}','{{$json.severity}}','{{$json.disruption_start}}',NOW());"
+      }
+    },
+
+    {
+      "id": "webhook",
+      "name": "Call Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1650,300],
+      "parameters": {
+        "method":"POST",
+        "url":"https://uncapitulating-vinita-preorbital.ngrok-free.dev/webhook/orchestrate",
+        "sendBody":true,
+        "contentType":"json",
+        "body":"={{ JSON.stringify($json) }}"
+      }
+    }
+
+  ],
+
+  "connections": {
+
+    "Every 5 Minutes": {
+      "main":[[
+        { "node":"Get Weather v3","type":"main","index":0 },
+        { "node":"Get AQI","type":"main","index":0 }
+      ]]
+    },
+
+    "Get Weather v3": {
+      "main":[[
+        { "node":"Merge Weather + AQI","type":"main","index":0 }
+      ]]
+    },
+
+    "Get AQI": {
+      "main":[[
+        { "node":"Merge Weather + AQI","type":"main","index":1 }
+      ]]
+    },
+
+    "Merge Weather + AQI": {
+      "main":[[
+        { "node":"Threshold Check","type":"main","index":0 }
+      ]]
+    },
+
+    "Threshold Check": {
+      "main":[[
+        { "node":"Dedup Check","type":"main","index":0 }
+      ],[]]
+    },
+
+    "Dedup Check": {
+      "main":[[
+        { "node":"Build Payload","type":"main","index":0 }
+      ]]
+    },
+
+    "Build Payload": {
+      "main":[[
+        { "node":"Insert DB","type":"main","index":0 }
+      ]]
+    },
+
+    "Insert DB": {
+      "main":[[
+        { "node":"Call Webhook","type":"main","index":0 }
+      ]]
+    }
+
+  }
+}

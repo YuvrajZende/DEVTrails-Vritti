@@ -55,7 +55,7 @@ export const initI18n = async () => {
     lng,
     fallbackLng: 'en',
     interpolation: { escapeValue: false },
-    compatibilityJSON: 'v4',
+    compatibilityJSON: 'v3',
   });
 };
 

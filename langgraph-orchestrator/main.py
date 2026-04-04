@@ -34,7 +34,7 @@ async def handle_orchestration(event: DisruptionEvent):
         "error": ""
     }
     
-    print(f"\n🚀 [Orchestrator] Starting workflow for Event: {event.trigger_id} in {event.zone_id}")
+    print(f"\n [Orchestrator] Starting workflow for Event: {event.trigger_id} in {event.zone_id}")
     
     try:
         # Run the LangGraph state machine synchronously
@@ -49,7 +49,7 @@ async def handle_orchestration(event: DisruptionEvent):
             }
         }
     except Exception as e:
-        print(f"❌ [Orchestrator] Failed: {e}")
+        print(f" [Orchestrator] Failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
@@ -57,4 +57,6 @@ def health_check():
     return {"status": "healthy"}
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000)
+    import os
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)

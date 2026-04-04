@@ -1,91 +1,106 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { AppScreen, PrimaryButton, ScreenHeading } from '../ui/components';
+import { colors } from '../ui/theme';
 
-const PLATFORMS = [
-  { id: 'amazon', label: 'Amazon', emoji: '📦', color: '#FF9900' },
-  { id: 'flipkart', label: 'Flipkart', emoji: '🛒', color: '#2874F0' },
-  { id: 'meesho', label: 'Meesho', emoji: '🛍️', color: '#E91E63' },
-  { id: 'other', label: 'Other', emoji: '🚲', color: '#6B7280' },
-];
+const platforms = [
+  { id: 'amazon', label: 'Amazon', icon: 'package-variant-closed', color: '#FFFBEB' },
+  { id: 'flipkart', label: 'Flipkart', icon: 'shopping-outline', color: '#DBEAFE' },
+  { id: 'meesho', label: 'Meesho', icon: 'storefront-outline', color: '#FCE7F3' },
+  { id: 'other', label: 'Other', icon: 'bike-fast', color: '#ECFDF5' },
+] as const;
 
 export default function PlatformSelectScreen({ navigation, route }: any) {
   const { t } = useTranslation();
   const phone = route?.params?.phone ?? '';
   const [selected, setSelected] = useState<string | null>(null);
 
-  const handleSelect = (platform: string) => {
-    setSelected(platform);
-    setTimeout(() => {
-      navigation.navigate('PartnerID', { phone, platform });
-    }, 300);
-  };
-
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
-      <Text style={styles.emoji}>🏢</Text>
-      <Text style={styles.title}>{t('select_platform')}</Text>
+    <AppScreen contentContainerStyle={styles.content}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.page} />
+      <Text style={styles.stepText}>Step 4 of 5</Text>
+      <ScreenHeading title={t('select_platform')} subtitle="Choose the platform that maps to your worker ID and renewal journey." />
+
       <View style={styles.grid}>
-        {PLATFORMS.map((p) => (
-          <TouchableOpacity
-            key={p.id}
-            style={[
-              styles.btn,
-              { backgroundColor: p.color },
-              selected === p.id && styles.btnSelected,
-            ]}
-            onPress={() => handleSelect(p.id)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.platformEmoji}>{p.emoji}</Text>
-            <Text style={styles.platformLabel}>{p.label}</Text>
-          </TouchableOpacity>
-        ))}
+        {platforms.map((platform) => {
+          const active = selected === platform.id;
+          return (
+            <Pressable
+              key={platform.id}
+              onPress={() => setSelected(platform.id)}
+              style={({ pressed }) => [styles.card, { backgroundColor: platform.color }, active && styles.cardActive, pressed && styles.cardPressed]}
+            >
+              <View style={styles.cardIcon}>
+                <MaterialCommunityIcons name={platform.icon} size={28} color={colors.text} />
+              </View>
+              <Text style={styles.cardLabel}>{platform.label}</Text>
+            </Pressable>
+          );
+        })}
       </View>
-    </View>
+
+      <PrimaryButton
+        title={selected ? 'Continue' : 'Select platform'}
+        disabled={!selected}
+        onPress={() => navigation.navigate('PartnerID', { phone, platform: selected })}
+      />
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A1628',
+  content: {
+    paddingBottom: 44,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
   },
-  emoji: { fontSize: 64, marginBottom: 16 },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 32,
-    textAlign: 'center',
+  stepText: {
+    fontSize: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: colors.softText,
+    marginBottom: 12,
   },
   grid: {
-    width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 24,
   },
-  btn: {
-    width: '45%',
-    paddingVertical: 28,
-    borderRadius: 20,
+  card: {
+    width: '48%',
+    minHeight: 140,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    margin: 7,
+    justifyContent: 'center',
+    padding: 16,
   },
-  btnSelected: {
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    transform: [{ scale: 1.02 }],
+  cardActive: {
+    borderWidth: 2,
+    borderColor: colors.black,
   },
-  platformEmoji: { fontSize: 40, marginBottom: 8 },
-  platformLabel: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
+  cardPressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.985 }],
+  },
+  cardIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 22,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  cardLabel: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: colors.text,
+  },
 });
+
+
