@@ -1,20 +1,21 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# VrittiWeb
 
-# Run and deploy your AI Studio app
+Browser demo client for the Vritti backend.
 
-This contains everything you need to run your app locally.
+## Local Ports
 
-View your app in AI Studio: https://ai.studio/apps/cd53d540-dfd3-49d7-b6b0-982d3acb1cec
+- Web app: `5173`
+- Backend API: `3000`
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
-
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Optionally set `VITE_API_BASE=http://localhost:3000`
+3. Start the dev server:
    `npm run dev`
+
+## Notes
+
+- This app talks to the Fastify backend, not directly to the orchestrator.
+- Auth, onboarding, policy status, payout history, and admin override actions all go through the backend API.

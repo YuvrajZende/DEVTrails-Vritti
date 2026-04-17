@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vritti.local/contracts/disruption-event.schema.json",
+  "title": "DISRUPTION_EVENT",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "zone_id",
+    "trigger_id",
+    "severity",
+    "disruption_start",
+    "disruption_end",
+    "affected_workers"
+  ],
+  "properties": {
+    "type": {
+      "const": "DISRUPTION_EVENT"
+    },
+    "zone_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trigger_id": {
+      "type": "string",
+      "pattern": "^T[1-5](_[A-Z_]+)?$"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["LOW", "MEDIUM", "HIGH"]
+    },
+    "disruption_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "disruption_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "affected_workers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

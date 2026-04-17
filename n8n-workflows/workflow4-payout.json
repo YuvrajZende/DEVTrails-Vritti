@@ -1,0 +1,35 @@
+{
+  "name": "Workflow 4 - Payout Processor",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Payout Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [200, 300],
+      "typeVersion": 1,
+      "parameters": {
+        "path": "payout",
+        "httpMethod": "POST",
+        "responseMode": "lastNode"
+      }
+    },
+    {
+      "id": "process",
+      "name": "Process Payout via Backend",
+      "type": "n8n-nodes-base.code",
+      "position": [500, 300],
+      "typeVersion": 1,
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst claimId = data.claim_id || '';\nconst workerId = data.worker_id || '';\nconst amount = data.amount || data.payout_amount || 0;\n\nif (!claimId) throw new Error('claim_id required');\nif (amount <= 0) throw new Error('amount must be > 0');\n\nconst resp = await fetch('http://host.docker.internal:3000/payout/process', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    claim_id: claimId,\n    worker_id: workerId,\n    amount,\n    status: 'PAID'\n  })\n});\n\nconst result = await resp.json();\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Payout Webhook": {
+      "main": [[
+        { "node": "Process Payout via Backend", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

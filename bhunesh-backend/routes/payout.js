@@ -124,7 +124,7 @@ export default async function payoutRoutes(fastify) {
             }
 
             const payoutsResult = await client.query(
-                `SELECT p.id AS payout_id, p.amount, c.trigger_id, p.paid_at, p.status
+                `SELECT p.id AS payout_id, p.amount, c.trigger_id, p.paid_at, p.status, c.breakdown
                  FROM payouts p
                  JOIN claims c ON c.id = p.claim_id
                  WHERE p.worker_id = $1
@@ -139,7 +139,8 @@ export default async function payoutRoutes(fastify) {
                     amount: row.amount,
                     trigger_id: row.trigger_id,
                     paid_at: row.paid_at,
-                    status: row.status
+                    status: row.status,
+                    breakdown: row.breakdown
                 }))
             });
         } catch (err) {

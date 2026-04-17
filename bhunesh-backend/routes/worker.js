@@ -125,6 +125,15 @@ export default async function workerRoutes(fastify) {
                 return reply.status(400).send({ error: `Zone ${zoneId} not found` });
             }
             const zone = zoneResult.rows[0];
+            const profileInput = {
+                tenure_weeks: Number(body.tenure_weeks ?? 0),
+                daily_active_hours: Number(body.daily_active_hours ?? DEFAULT_PROFILE.daily_active_hours),
+                weekly_delivery_days: Number(body.weekly_delivery_days ?? DEFAULT_PROFILE.weekly_delivery_days),
+                avg_weekly_earnings: Number(body.avg_weekly_earnings ?? DEFAULT_PROFILE.avg_weekly_earnings),
+                earnings_std_dev: Number(body.earnings_std_dev ?? DEFAULT_PROFILE.earnings_std_dev),
+                claim_count_90d: Number(body.claim_count_90d ?? DEFAULT_PROFILE.claim_count_90d),
+                is_part_time: Number(body.is_part_time ?? ((Number(body.daily_active_hours ?? DEFAULT_PROFILE.daily_active_hours) < 4) ? 1 : DEFAULT_PROFILE.is_part_time))
+            };
 
             const phoneCheck = await client.query(
                 'SELECT id, latest_risk_score, latest_premium_tier, latest_coverage_cap FROM workers WHERE phone = $1',
@@ -160,20 +169,22 @@ export default async function workerRoutes(fastify) {
                 });
             }
 
-            const riskData = await fetchRiskQuote(fastify, zone, body);
+            const riskData = await fetchRiskQuote(fastify, zone, profileInput);
             const workerId = await getNextWorkerId(client);
 
             await client.query(
                 `INSERT INTO workers (
                     id, phone, name, platform, partner_id, zone_id, language,
-                    device_fingerprint, upi_id, tenure_weeks, avg_weekly_earnings,
+                    device_fingerprint, upi_id, tenure_weeks, daily_active_hours, weekly_delivery_days, avg_weekly_earnings,
+                    earnings_std_dev, claim_count_90d, is_part_time,
                     latest_risk_score, latest_premium_tier, latest_coverage_cap, last_quote_at,
                     auth_user_id
                 ) VALUES (
                     $1, $2, $3, $4, $5, $6, $7,
-                    $8, $9, $10, $11,
-                    $12, $13, $14, NOW(),
-                    $15
+                    $8, $9, $10, $11, $12, $13,
+                    $14, $15, $16,
+                    $17, $18, $19, NOW(),
+                    $20
                 )`,
                 [
                     workerId,
@@ -185,8 +196,13 @@ export default async function workerRoutes(fastify) {
                     body.language || 'hi',
                     body.device_fingerprint || null,
                     body.upi_id || null,
-                    Number(body.tenure_weeks ?? 0),
-                    Number(body.avg_weekly_earnings ?? 0),
+                    profileInput.tenure_weeks,
+                    profileInput.daily_active_hours,
+                    profileInput.weekly_delivery_days,
+                    profileInput.avg_weekly_earnings,
+                    profileInput.earnings_std_dev,
+                    profileInput.claim_count_90d,
+                    Boolean(profileInput.is_part_time),
                     riskData.risk_score,
                     riskData.premium_tier,
                     riskData.coverage_cap,

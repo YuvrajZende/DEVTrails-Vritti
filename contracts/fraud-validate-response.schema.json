@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vritti.local/contracts/fraud-validate-response.schema.json",
+  "title": "FRAUD_VALIDATE_RESPONSE",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "fraud_score",
+    "recommendation",
+    "payout_amount",
+    "flags",
+    "layers_triggered"
+  ],
+  "properties": {
+    "fraud_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": [
+        "AUTO_APPROVE",
+        "PARTIAL_PAYOUT",
+        "HOLD"
+      ]
+    },
+    "payout_amount": {
+      "type": "number",
+      "minimum": 0
+    },
+    "flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "layers_triggered": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "name": "Workflow 3 - Orchestrator",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Event Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [200, 300],
+      "typeVersion": 1,
+      "parameters": {
+        "path": "orchestrator",
+        "httpMethod": "POST",
+        "responseMode": "lastNode"
+      }
+    },
+    {
+      "id": "log",
+      "name": "Log Event",
+      "type": "n8n-nodes-base.code",
+      "position": [450, 300],
+      "typeVersion": 1,
+      "parameters": {
+        "jsCode": "const event = $input.first().json;\nconsole.log(`[n8n Orchestrator] Received: ${event.trigger_id} severity=${event.severity} zone=${event.zone_id}`);\nreturn [{ json: event }];"
+      }
+    },
+    {
+      "id": "forward",
+      "name": "Forward to LangGraph",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [700, 300],
+      "typeVersion": 4,
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8002/webhook/orchestrate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"zone_id\": \"{{ $json.zone_id }}\",\n  \"trigger_id\": \"{{ $json.trigger_id }}\",\n  \"severity\": \"{{ $json.severity }}\",\n  \"disruption_start\": \"{{ $json.disruption_start }}\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Event Webhook": {
+      "main": [[
+        { "node": "Log Event", "type": "main", "index": 0 }
+      ]]
+    },
+    "Log Event": {
+      "main": [[
+        { "node": "Forward to LangGraph", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" }
+}

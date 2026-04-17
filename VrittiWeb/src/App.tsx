@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { 
   Shield, 
   Home, 
@@ -843,9 +844,53 @@ export default function App() {
             onClick={async () => {
               setDemoLoading(true);
               try {
-                await triggerDisruption('zone_MUM_01', `rain_${Date.now()}`, 'HIGH');
-                // Re-fetch dashboard data after orchestrator runs
-                setTimeout(() => fetchDashboardData(), 2000);
+                const workerId = localStorage.getItem('@vritti_worker_id');
+
+                // === ROUTE 1: LangGraph Orchestrator /demo/simulate ===
+                // This endpoint bypasses live sensor validation (no real rain needed)
+                // and runs the full claim generation + payout pipeline.
+                let orchestratorWorked = false;
+                try {
+                  console.log('[Demo] Sending event to LangGraph Orchestrator /demo/simulate...');
+                  const orchRes = await axios.post(`${import.meta.env.VITE_ORCHESTRATOR_BASE || 'http://localhost:8002'}/demo/simulate`, {
+                    zone_id: 'VAD-04',
+                    trigger_id: 'T1_HEAVY_RAINFALL',
+                    severity: 'HIGH',
+                  }, { timeout: 20000 });
+                  orchestratorWorked = true;
+                  console.log('[Demo] Orchestrator result:', orchRes.data);
+                } catch (orchErr: any) {
+                  console.warn('[Demo] Orchestrator unreachable, using direct backend flow:', orchErr.message);
+                }
+
+                // === ROUTE 2: Fallback — call backend directly if orchestrator failed ===
+                if (!orchestratorWorked) {
+                  const triggerId = `T1_RAIN_${Date.now()}`;
+                  const claimRes = await axios.post(`${import.meta.env.VITE_API_BASE || 'http://localhost:3000'}/claim/initiate`, {
+                    zone_id: 'VAD-04',
+                    trigger_id: triggerId,
+                    severity: 'HIGH',
+                    disruption_start: new Date().toISOString(),
+                    affected_workers: workerId ? [workerId] : []
+                  });
+                  const claims = claimRes.data?.claims || [];
+                  for (const claim of claims) {
+                    if (claim.status === 'APPROVED' && claim.payout_amount > 0) {
+                      await axios.post(`${import.meta.env.VITE_API_BASE || 'http://localhost:3000'}/payout/process`, {
+                        claim_id: claim.id,
+                        worker_id: claim.worker_id,
+                        amount: claim.payout_amount,
+                        status: 'PAID'
+                      });
+                    }
+                  }
+                }
+
+                // === Step 3: Poll dashboard to show live update ===
+                for (let i = 0; i < 5; i++) {
+                  await new Promise(r => setTimeout(r, 1500));
+                  await fetchDashboardData();
+                }
               } catch (e: any) {
                 console.error('Demo trigger failed:', e);
               } finally {
@@ -909,21 +954,47 @@ export default function App() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {payouts.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-5 text-xs font-medium text-text-secondary">{p.date}</td>
-                  <td className="px-6 py-5">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-slate-100 rounded-xl text-text-primary">
-                        {p.type === 'Weather' ? <CloudRain className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                <React.Fragment key={p.id}>
+                  <tr className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-5 text-xs font-medium text-text-secondary">{p.date}</td>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-slate-100 rounded-xl text-text-primary">
+                          {p.type === 'Weather' ? <CloudRain className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                        </div>
+                        <span className="text-sm font-bold text-text-primary">{p.type} Payout</span>
                       </div>
-                      <span className="text-sm font-bold text-text-primary">{p.type} Payout</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5 text-sm font-bold text-text-primary">₹{p.amount}</td>
-                  <td className="px-6 py-5">
-                    <StatusBadge status={p.status} />
-                  </td>
-                </tr>
+                    </td>
+                    <td className="px-6 py-5 text-sm font-bold text-text-primary">₹{p.amount}</td>
+                    <td className="px-6 py-5">
+                      <StatusBadge status={p.status} />
+                    </td>
+                  </tr>
+                  {p.breakdown && (
+                    <tr className="bg-slate-50/60">
+                      <td colSpan={4} className="px-6 py-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                          <div>
+                            <p className="text-text-secondary font-medium mb-1">Hourly Revenue</p>
+                            <p className="font-bold text-text-primary">₹{p.breakdown.hourly_rate} <span className="text-text-secondary text-[10px] font-normal">({p.breakdown.disruption_hours}h loss)</span></p>
+                          </div>
+                          <div>
+                            <p className="text-text-secondary font-medium mb-1">Severity / Cap</p>
+                            <p className="font-bold text-text-primary">{p.breakdown.severity_multiplier}x / ₹{p.breakdown.capped_at_coverage}</p>
+                          </div>
+                          <div>
+                            <p className="text-text-secondary font-medium mb-1">ML Risk Penalty</p>
+                            <p className="font-bold text-amber-600">{p.breakdown.fraud_penalty} reduction</p>
+                          </div>
+                          <div>
+                            <p className="text-text-secondary font-medium mb-1">Final Payout</p>
+                            <p className="font-bold text-emerald-600">₹{p.breakdown.final_payout}</p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>

@@ -22,8 +22,14 @@ const __dirname = path.dirname(__filename);
 export function buildServer() {
     const fastify = Fastify({ logger: true });
 
-    // 1. Enable CORS for the mobile app
-    fastify.register(cors, { origin: '*' });
+    // 1. Enable CORS — restricted in production, open in dev
+    const isProduction = process.env.NODE_ENV === 'production';
+    fastify.register(cors, {
+        origin: isProduction
+            ? ['https://vritti.app', 'https://admin.vritti.app']
+            : true,  // Allow all origins in development
+        credentials: true
+    });
 
     // 2. Connect to PostgreSQL/Neon
     fastify.register(fastifyPostgres, {
@@ -44,7 +50,11 @@ export function buildServer() {
     });
 
     // 5. Setup DB — Create all tables from schema.sql
+    // PRODUCTION GUARD: disabled in production to prevent accidental schema drops
     fastify.get('/setup-db', async (request, reply) => {
+        if (process.env.NODE_ENV === 'production') {
+            return reply.status(403).send({ error: 'Endpoint disabled in production. Use migration scripts.' });
+        }
         let client;
         try {
             client = await fastify.pg.connect();
@@ -69,7 +79,11 @@ export function buildServer() {
     });
 
     // 6. Seed DB — Insert seed data from seed.sql
+    // PRODUCTION GUARD: disabled in production
     fastify.get('/seed-db', async (request, reply) => {
+        if (process.env.NODE_ENV === 'production') {
+            return reply.status(403).send({ error: 'Endpoint disabled in production.' });
+        }
         let client;
         try {
             client = await fastify.pg.connect();
@@ -86,7 +100,11 @@ export function buildServer() {
     });
 
     // 7. Seed Test User — Create a complete test user for E2E testing
+    // PRODUCTION GUARD: disabled in production
     fastify.get('/seed-test-user', async (request, reply) => {
+        if (process.env.NODE_ENV === 'production') {
+            return reply.status(403).send({ error: 'Endpoint disabled in production.' });
+        }
         const crypto = await import('crypto');
         const TEST_PASSWORD = 'test123456';
         
@@ -110,9 +128,9 @@ export function buildServer() {
                  ON CONFLICT (id) DO NOTHING`
             );
 
-            // Cleanup existing test data (in dependency order)
-            await client.query("DELETE FROM payouts WHERE id = 'pay_fake_001'");
-            await client.query("DELETE FROM claims WHERE id = 'clm_fake_001'");
+            // Cleanup ALL existing test data (in dependency order — broadest delete)
+            await client.query("DELETE FROM payouts WHERE worker_id IN (SELECT id FROM workers WHERE phone IN ($1, $2))", [REAL_PHONE, FAKE_PHONE]);
+            await client.query("DELETE FROM claims WHERE worker_id IN (SELECT id FROM workers WHERE phone IN ($1, $2))", [REAL_PHONE, FAKE_PHONE]);
             await client.query("DELETE FROM policies WHERE worker_id IN (SELECT id FROM workers WHERE phone IN ($1, $2))", [REAL_PHONE, FAKE_PHONE]);
             await client.query("DELETE FROM disruption_events WHERE id = 'evt_fake_001'");
             await client.query("DELETE FROM workers WHERE phone IN ($1, $2)", [REAL_PHONE, FAKE_PHONE]);
@@ -133,13 +151,14 @@ export function buildServer() {
                 `INSERT INTO workers (
                     id, phone, name, platform, partner_id, zone_id,
                     language, device_fingerprint, upi_id,
-                    tenure_weeks, avg_weekly_earnings,
+                    tenure_weeks, daily_active_hours, weekly_delivery_days, avg_weekly_earnings,
+                    earnings_std_dev, claim_count_90d, is_part_time,
                     latest_risk_score, latest_premium_tier, latest_coverage_cap,
                     last_quote_at, auth_user_id
                 ) VALUES (
-                    'w_real_001', $1, 'Real API User', 'Amazon', 'AMZ-REAL-001', 'VAD-04',
+                    'w_real_001', $1, 'Raju Kumar', 'Amazon', 'AMZ-REAL-001', 'VAD-04',
                     'en', 'fp_real_device_001', 'realuser@upi',
-                    24, 4500, 0.25, 15, 600, NOW(), $2
+                    24, 8.5, 6, 4500, 550, 0, false, 0.25, 25, 500, NOW(), $2
                 )`,
                 [REAL_PHONE, authResult1.rows[0].id]
             );
@@ -151,7 +170,7 @@ export function buildServer() {
                 ) VALUES (
                     'pol_real_001', 'w_real_001',
                     CURRENT_DATE, CURRENT_DATE + INTERVAL '6 days',
-                    15.0, 600.0, 0.25, 'ACTIVE'
+                    25.0, 500.0, 0.25, 'ACTIVE'
                 )`
             );
 
@@ -168,13 +187,14 @@ export function buildServer() {
                 `INSERT INTO workers (
                     id, phone, name, platform, partner_id, zone_id,
                     language, device_fingerprint, upi_id,
-                    tenure_weeks, avg_weekly_earnings,
+                    tenure_weeks, daily_active_hours, weekly_delivery_days, avg_weekly_earnings,
+                    earnings_std_dev, claim_count_90d, is_part_time,
                     latest_risk_score, latest_premium_tier, latest_coverage_cap,
                     last_quote_at, auth_user_id
                 ) VALUES (
                     'w_fake_001', $1, 'Fake Weather User', 'Swiggy', 'SWG-FAKE-001', 'VAD-04',
                     'hi', 'fp_fake_device_001', 'fakeuser@upi',
-                    10, 3000, 0.40, 30, 500, NOW(), $2
+                    10, 4.0, 5, 3000, 480, 2, false, 0.40, 30, 500, NOW(), $2
                 )`,
                 [FAKE_PHONE, authResult2.rows[0].id]
             );

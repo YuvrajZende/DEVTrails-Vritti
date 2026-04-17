@@ -105,6 +105,27 @@ export default async function policyRoutes(fastify) {
         }
     });
 
+    // GET /policy/expiring — used by n8n Policy Renewal workflow
+    fastify.get('/policy/expiring', async (request, reply) => {
+        const client = await fastify.pg.connect();
+        try {
+            const result = await client.query(
+                `SELECT p.id, p.worker_id, p.week_start, p.week_end,
+                        p.premium_paid, p.coverage_cap, p.risk_score, p.status
+                 FROM policies p
+                 WHERE p.week_end < CURRENT_DATE
+                   AND p.status = 'ACTIVE'
+                 ORDER BY p.week_end DESC`
+            );
+            return reply.send({ policies: result.rows });
+        } catch (err) {
+            fastify.log.error(err);
+            return reply.status(500).send({ error: 'Failed to fetch expiring policies', details: err.message });
+        } finally {
+            client.release();
+        }
+    });
+
     // GET /policy/status/:worker_id
     fastify.get('/policy/status/:worker_id', async (request, reply) => {
         const { worker_id: workerId } = request.params;

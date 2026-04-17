@@ -1,0 +1,59 @@
+{
+  "name": "Workflow 2 - Curfew Trigger",
+  "nodes": [
+    {
+      "id": "schedule",
+      "name": "Every 10 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [200, 300],
+      "typeVersion": 1,
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 10 }]
+        }
+      }
+    },
+    {
+      "id": "news",
+      "name": "Get News",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 200],
+      "typeVersion": 4,
+      "parameters": {
+        "url": "https://newsapi.org/v2/everything",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "q", "value": "curfew vadodara OR bandh vadodara OR curfew gujarat" },
+            { "name": "language", "value": "en" },
+            { "name": "pageSize", "value": "5" },
+            { "name": "apiKey", "value": "YOUR_NEWSAPI_KEY_HERE" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "build",
+      "name": "Analyze and Call Orchestrator",
+      "type": "n8n-nodes-base.code",
+      "position": [700, 300],
+      "typeVersion": 1,
+      "parameters": {
+        "jsCode": "const newsData = $input.first().json;\nconst newsCount = newsData.totalResults || 0;\n\nif (newsCount > 0) {\n  const severity = newsCount >= 3 ? 'HIGH' : 'MEDIUM';\n  const payload = {\n    zone_id: 'VAD-04',\n    trigger_id: 'T4_CURFEW_DETECTED',\n    severity,\n    disruption_start: new Date().toISOString()\n  };\n\n  try {\n    const resp = await fetch('http://host.docker.internal:8002/webhook/orchestrate', {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify(payload)\n    });\n    const result = await resp.json();\n    return [{ json: { triggered: true, details: `${newsCount} curfew articles found`, orchestrator: result } }];\n  } catch (e) {\n    return [{ json: { triggered: true, details: `${newsCount} curfew articles found`, error: e.message } }];\n  }\n}\n\nreturn [{ json: { triggered: false, details: 'No curfew news detected' } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Every 10 Minutes": {
+      "main": [[
+        { "node": "Get News", "type": "main", "index": 0 }
+      ]]
+    },
+    "Get News": {
+      "main": [[
+        { "node": "Analyze and Call Orchestrator", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

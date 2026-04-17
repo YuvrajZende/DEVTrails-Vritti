@@ -39,11 +39,17 @@ CREATE TABLE workers (
     upi_id              VARCHAR(100),
     is_active           BOOLEAN NOT NULL DEFAULT true,
     tenure_weeks        INT NOT NULL DEFAULT 0,
+    daily_active_hours  FLOAT NOT NULL DEFAULT 8,
+    weekly_delivery_days INT NOT NULL DEFAULT 6,
     avg_weekly_earnings FLOAT NOT NULL DEFAULT 0,
+    earnings_std_dev    FLOAT NOT NULL DEFAULT 500,
+    claim_count_90d     INT NOT NULL DEFAULT 0,
+    is_part_time        BOOLEAN NOT NULL DEFAULT false,
     latest_risk_score   FLOAT,
     latest_premium_tier INT,
     latest_coverage_cap FLOAT,
     last_quote_at       TIMESTAMP,
+    auth_user_id        VARCHAR(50),
     created_at          TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
@@ -72,7 +78,8 @@ CREATE TABLE claims (
     recommendation  VARCHAR(20),
     payout_amount   FLOAT,
     status          VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    flags           JSONB NOT NULL DEFAULT '[]'
+    flags           JSONB NOT NULL DEFAULT '[]',
+    breakdown       JSONB DEFAULT '{}'
 );
 
 -- 5. PAYOUTS — UPI payout records
@@ -97,6 +104,7 @@ CREATE TABLE disruption_events (
     disruption_start TIMESTAMP NOT NULL DEFAULT NOW(),
     started_at  TIMESTAMP NOT NULL DEFAULT NOW(),
     resolved_at TIMESTAMP,
+    sensor_source VARCHAR(20) NOT NULL DEFAULT 'MANUAL',
     created_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );
 

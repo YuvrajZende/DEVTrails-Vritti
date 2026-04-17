@@ -1,7 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Guidewire-DEVTrails%202026-red?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Phase-2%20Submission-orange?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Status-Active%20Development-green?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Phase-3%20Submission-orange?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Status-Final%20Release-green?style=for-the-badge" />
 </p>
 
 <h1 align="center">🛡️ Vritti</h1>
@@ -18,6 +18,16 @@
   <a href="#-roadmap">Roadmap</a> •
   <a href="#-team">Team</a>
 </p>
+
+---
+
+## 🏆 Final Submission Updates (Addressing Feedback)
+
+Based on our Phase 2 feedback, the final Phase 3 submission introduces three pivotal improvements:
+
+1. **Fully Automated Workflow & Monitoring:** Parametric triggers are no longer purely reliant on manual admin intervention. We've introduced a standalone **Python LangGraph Orchestrator** paired with auto-starting **n8n sensor monitoring** that continuously polls for disruption events and triggers claims with zero human interaction.
+2. **Comprehensive ML Fraud Defense:** Our fraud detection is no longer partially implemented. We've introduced a dedicated standalone **Fraud Validation Service** utilizing all 5 planned mechanisms (Zone Match, Behavioral Baseline, Cluster Consensus, Temporal Anomaly, and Anti-Spoofing sensors).
+3. **Proper Insurance Exclusions:** Incorporated standardized gig-economy exclusions (War, Pandemic, Act of God exclusions outside natural parametric scopes) into the policy coverage terms. Let's make an impact.
 
 ---
 
@@ -98,16 +108,28 @@ Key engineered features: `zone_disruption_frequency`, `claim_velocity` (fraud si
 | T4 | Curfew / Bandh | News API | Govt-declared curfew in zone |
 | T5 | Platform Outage | Mock API | Zero orders pushed for >2 hrs |
 
-### Fraud Detection (4-layer)
+### Fraud Detection (5-layer ML Validated)
 
 | Layer | Check |
 |---|---|
 | Zone Match | GPS must place worker in registered zone during disruption |
 | Behavioral Deviation | Partial loss calculated if disruption window < full shift |
 | Cluster Consensus | ≥60% of zone workers must show inactivity |
-| Temporal Anomaly | New accounts, consecutive-week claims, unmatched spikes → human review |
+| Temporal Anomaly | Burst detection, new accounts, consecutive-week claims leading to human hold |
+| Anti-Spoofing | Accelerometer anomaly, IP spoofing, impossible travel velocity detection |
 
 **Fraud score output:** `0.0–0.3` auto-approve · `0.3–0.6` reduced payout + flag · `0.6–1.0` manual hold
+
+---
+
+## Policy Exclusions (Standard Clauses)
+
+To ensure long-term liquidity and risk pool stability, the parametric income insurance does **not** cover lost income during the following scenarios:
+
+- **Pandemic / Epidemic Lockdowns:** General stay-at-home orders due to broad public health crises (e.g., COVID-19) are not covered as they affect entire regions simultaneously and break parametric liquidity.
+- **War, Riots & Civil Commotion:** Disruptions caused by armed conflict or widespread civil unrest that are not localized, unpredictable curfews.
+- **Voluntary Account Deactivation:** If a worker's account is suspended by the platform for disciplinary action, safety violations, or voluntary time off.
+- **Fraud Mismatch:** Significant deviations triggered by our 5-layer anti-spoofing engine lead to automatic exclusion of the individual claim.
 
 ---
 
@@ -127,8 +149,9 @@ Built for someone checking their phone at a red light, not a developer on a MacB
 | Layer | Stack |
 |---|---|
 | Mobile | React Native (Expo) · Android-only · i18next · expo-localization · Lottie |
-| Backend | Node.js · Fastify · PostgreSQL · Neon · n8n |
-| Orchestrator | Python · LangGraph · FastAPI |
+| Backend | Node.js · Fastify · PostgreSQL · Neon |
+| Fraud Service | Python · FastAPI · psycopg2-binary |
+| Orchestrator | Python · LangGraph · FastAPI · n8n workflow exports |
 | ML Service | Python · FastAPI · XGBoost · scikit-learn · Pandas |
 | Integrations | OpenWeatherMap · CPCB AQI · News API |
 | Infrastructure | Railway · Neon Postgres |
@@ -137,14 +160,25 @@ Built for someone checking their phone at a red light, not a developer on a MacB
 
 ## How to Run Locally
 
-Vritti runs as a set of interconnected microservices. You need to start all 4 components for the full end-to-end flow.
+Vritti runs as a set of interconnected services. For the full local stack, use these default ports:
+
+- Backend API: `3000`
+- Risk Score Service: `8001`
+- LangGraph Orchestrator: `8002`
+- Fraud Validation Service: `8003`
+- VrittiWeb: `5173`
+- n8n: `5678`
 
 ### 1. Node.js Backend (Port 3000)
 Handles DB connections, worker onboarding, policies, and claims.
 ```bash
 cd bhunesh-backend
 npm install
-# Ensure you have a .env file with DATABASE_URL and RISK_SCORE_URL=http://localhost:8001/risk-score
+# Ensure you have a .env file with:
+# DATABASE_URL=<your Neon/Postgres URL>
+# RISK_SCORE_URL=http://localhost:8001/risk-score
+# FRAUD_VALIDATE_URL=http://localhost:8003/fraud-validate
+# LANGGRAPH_ORCHESTRATOR_URL=http://localhost:8002/webhook/orchestrate
 npm start
 ```
 
@@ -158,8 +192,8 @@ pip install -r requirements.txt
 python main.py
 ```
 
-### 3. LangGraph Orchestrator (Port 8000)
-The AI brain that intercepts n8n webhook disruption triggers, evaluates severity, fetches impacted workers, and initiates payouts.
+### 3. LangGraph Orchestrator (Port 8002)
+Receives disruption triggers, checks sensors, generates claims through the backend, and routes payouts.
 ```bash
 cd langgraph-orchestrator
 python -m venv venv
@@ -168,14 +202,35 @@ pip install -r requirements.txt
 python main.py
 ```
 
-### 4. VrittiApp (React Native Frontend)
+### 4. Fraud Validation Service (Port 8003)
+Runs the standalone `/fraud-validate` API used during claim processing.
+```bash
+cd fraud-validation-service
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
+
+### 5. VrittiApp (React Native Frontend)
 The worker-facing Android application.
 ```bash
 cd VrittiApp
 npm install
-# Important: Update API_BASE in `src/services/api.ts` to point to your computer's local IP address (e.g. http://192.168.1.100:3000)
 npx expo start
 ```
+
+### 6. VrittiWeb (Port 5173)
+Optional browser demo shell for the same backend.
+```bash
+cd VrittiWeb
+npm install
+# Optional: set VITE_API_BASE=http://localhost:3000
+npm run dev
+```
+
+### 7. n8n Workflow Exports
+The exported workflow JSON files live in [`n8n-workflows/`](./n8n-workflows) and target the local ports above.
 
 ---
 

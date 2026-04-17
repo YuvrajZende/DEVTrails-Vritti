@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vritti.local/contracts/risk-score-response.schema.json",
+  "title": "RISK_SCORE_RESPONSE",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "risk_score",
+    "premium_tier",
+    "coverage_cap"
+  ],
+  "properties": {
+    "risk_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "premium_tier": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "coverage_cap": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

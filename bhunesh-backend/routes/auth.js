@@ -1,7 +1,14 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'vritti-secret-key-change-in-production';
+const JWT_SECRET = (() => {
+    if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+    if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: JWT_SECRET must be set in production. Refusing to start with default.');
+    }
+    console.warn('⚠️  JWT_SECRET not set — using insecure default. Set JWT_SECRET in .env for production.');
+    return 'vritti-dev-secret-DO-NOT-USE-IN-PROD';
+})();
 const JWT_EXPIRES_IN = '7d';
 const OTP_EXPIRES_MINUTES = 10;
 const MAX_OTP_ATTEMPTS = 3;

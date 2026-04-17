@@ -1,4 +1,5 @@
 import axios from 'axios';
+import jwt from 'jsonwebtoken';
 
 function generateEventId() {
     return `evt_${Date.now()}_${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
@@ -12,9 +13,30 @@ function resolveOrchestratorUrl(rawUrl) {
     return `${trimmed}/webhook/orchestrate`;
 }
 
+// Admin auth check — enforced in production, bypassed in dev
+function requireAdminAuth(request, reply) {
+    if (process.env.NODE_ENV !== 'production') return; // open in dev
+    const token = request.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+        reply.status(401).send({ error: 'Admin authentication required' });
+        return false;
+    }
+    try {
+        const secret = process.env.JWT_SECRET;
+        if (!secret) throw new Error('JWT_SECRET not configured');
+        jwt.verify(token, secret);
+        return true;
+    } catch {
+        reply.status(401).send({ error: 'Invalid or expired admin token' });
+        return false;
+    }
+}
+
 export default async function adminRoutes(fastify) {
     // POST /admin/override
+    // PRODUCTION: requires JWT auth
     fastify.post('/admin/override', async (request, reply) => {
+        if (requireAdminAuth(request, reply) === false) return;
         const body = request.body || {};
         const zoneId = String(body.zone_id || '').trim();
         const triggerId = String(body.trigger_id || '').trim();
@@ -78,6 +100,62 @@ export default async function adminRoutes(fastify) {
         } catch (err) {
             fastify.log.error(err);
             return reply.status(500).send({ error: 'Admin override failed', details: err.message });
+        } finally {
+            client.release();
+        }
+    });
+
+    // GET /admin/platform-health
+    // Platform outage sensor (T5) health endpoint.
+    // In production this would query real dispatch/order data.
+    // For MVP: always returns healthy UNLESS ?simulate_outage=true is passed.
+    // This prevents automated monitoring from creating false claims.
+    fastify.get('/admin/platform-health', async (request, reply) => {
+        const zoneId = request.query.zone_id || 'VAD-04';
+        const simulateOutage = request.query.simulate_outage === 'true';
+        
+        if (simulateOutage) {
+            return reply.send({
+                zone_id: zoneId,
+                active_orders: 0,
+                hours_inactive: 2.5,
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        // Default: platform is healthy
+        return reply.send({
+            zone_id: zoneId,
+            active_orders: Math.floor(Math.random() * 500) + 100, // 100-600 orders
+            hours_inactive: 0,
+            timestamp: new Date().toISOString()
+        });
+    });
+
+    // GET /admin/sensor-log
+    // Audit log of recent disruption events (sensor triggers)
+    fastify.get('/admin/sensor-log', async (request, reply) => {
+        const client = await fastify.pg.connect();
+        try {
+            const limit = parseInt(request.query.limit) || 20;
+            
+            const result = await client.query(
+                `SELECT de.id, de.zone_id, de.trigger_id, de.severity, de.sensor_source, 
+                        de.disruption_start, de.created_at, z.name as zone_name
+                 FROM disruption_events de
+                 JOIN zones z ON z.id = de.zone_id
+                 ORDER BY de.created_at DESC
+                 LIMIT $1`,
+                [limit]
+            );
+            
+            return reply.send({
+                count: result.rows.length,
+                logs: result.rows
+            });
+        } catch (err) {
+            fastify.log.error(err);
+            return reply.status(500).send({ error: 'Failed to fetch sensor logs', details: err.message });
         } finally {
             client.release();
         }

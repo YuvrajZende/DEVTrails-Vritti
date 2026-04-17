@@ -1,0 +1,150 @@
+{
+  "name": "Workflow 1 - Weather Trigger",
+  "nodes": [
+    {
+      "id": "schedule",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [200, 300],
+      "typeVersion": 1,
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 5 }]
+        }
+      }
+    },
+    {
+      "id": "weather",
+      "name": "Get Weather v3",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 200],
+      "typeVersion": 4,
+      "parameters": {
+        "url": "https://api.openweathermap.org/data/2.5/weather",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "lat", "value": "22.3072" },
+            { "name": "lon", "value": "73.1812" },
+            { "name": "appid", "value": "YOUR_OPENWEATHERMAP_API_KEY_HERE" },
+            { "name": "units", "value": "metric" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "aqi",
+      "name": "Get AQI",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 420],
+      "typeVersion": 4,
+      "parameters": {
+        "url": "https://api.waqi.info/feed/vadodara/",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "token", "value": "YOUR_AQI_API_TOKEN_HERE" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "merge",
+      "name": "Merge Weather + AQI",
+      "type": "n8n-nodes-base.merge",
+      "position": [700, 300],
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "build",
+      "name": "Build Payload",
+      "type": "n8n-nodes-base.code",
+      "position": [900, 300],
+      "typeVersion": 1,
+      "parameters": {
+        "jsCode": "// Get weather data from first item, AQI from second\nconst items = $input.all();\nconst weatherData = items[0]?.json || {};\nconst aqiData = items[1]?.json || {};\n\nconst temp = weatherData.main?.temp || 0;\nconst feelsLike = weatherData.main?.feels_like || 0;\nconst rain1h = weatherData.rain?.['1h'] || 0;\nconst weatherDesc = weatherData.weather?.[0]?.description || 'unknown';\nconst aqi = aqiData.data?.aqi || 0;\n\nlet triggered = false;\nlet triggerId = 'NONE';\nlet severity = 'LOW';\nlet details = '';\n\nif (rain1h >= 15) {\n  triggered = true;\n  triggerId = 'T1_HEAVY_RAINFALL';\n  severity = rain1h >= 30 ? 'HIGH' : 'MEDIUM';\n  details = `Rainfall ${rain1h}mm/h exceeds 15mm threshold`;\n} else if (feelsLike >= 45) {\n  triggered = true;\n  triggerId = 'T2_EXTREME_HEAT';\n  severity = 'HIGH';\n  details = `Feels like ${feelsLike}°C exceeds 45°C threshold`;\n} else if (aqi >= 300) {\n  triggered = true;\n  triggerId = 'T3_SEVERE_AQI';\n  severity = 'HIGH';\n  details = `AQI ${aqi} exceeds 300 threshold`;\n} else {\n  details = `Normal: ${weatherDesc}, ${temp}°C, AQI ${aqi}`;\n}\n\nreturn [{ json: { triggered, zone_id: 'VAD-04', trigger_id: triggerId, severity, disruption_start: new Date().toISOString(), details, raw: { temp, feelsLike, rain1h, weatherDesc, aqi } } }];"
+      }
+    },
+    {
+      "id": "check",
+      "name": "Threshold Breached?",
+      "type": "n8n-nodes-base.if",
+      "position": [1100, 300],
+      "typeVersion": 1,
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.triggered }}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "orchestrator",
+      "name": "Call LangGraph Orchestrator",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1350, 200],
+      "typeVersion": 4,
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8002/webhook/orchestrate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"zone_id\": \"{{ $json.zone_id }}\",\n  \"trigger_id\": \"{{ $json.trigger_id }}\",\n  \"severity\": \"{{ $json.severity }}\",\n  \"disruption_start\": \"{{ $json.disruption_start }}\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "log_ok",
+      "name": "Log Normal",
+      "type": "n8n-nodes-base.noOp",
+      "position": [1350, 420],
+      "typeVersion": 1,
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Every 5 Minutes": {
+      "main": [[
+        { "node": "Get Weather v3", "type": "main", "index": 0 },
+        { "node": "Get AQI", "type": "main", "index": 0 }
+      ]]
+    },
+    "Get Weather v3": {
+      "main": [[
+        { "node": "Merge Weather + AQI", "type": "main", "index": 0 }
+      ]]
+    },
+    "Get AQI": {
+      "main": [[
+        { "node": "Merge Weather + AQI", "type": "main", "index": 1 }
+      ]]
+    },
+    "Merge Weather + AQI": {
+      "main": [[
+        { "node": "Build Payload", "type": "main", "index": 0 }
+      ]]
+    },
+    "Build Payload": {
+      "main": [[
+        { "node": "Threshold Breached?", "type": "main", "index": 0 }
+      ]]
+    },
+    "Threshold Breached?": {
+      "main": [
+        [{ "node": "Call LangGraph Orchestrator", "type": "main", "index": 0 }],
+        [{ "node": "Log Normal", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" }
+}

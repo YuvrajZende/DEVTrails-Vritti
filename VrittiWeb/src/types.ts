@@ -12,6 +12,7 @@ export interface PayoutRecord {
   status: PayoutStatus;
   date: string;
   type: string;
+  breakdown?: any;
 }
 
 export interface DisruptionEvent {

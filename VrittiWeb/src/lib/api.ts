@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { PayoutRecord, PolicyStatus } from '../types';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
 
 const CACHE_PREFIX = '@vritti_web_cache_';
 
@@ -195,12 +195,20 @@ export const getPayoutHistory = async (worker_id: string): Promise<PayoutRecord[
     const response = await axios.get<PayoutHistoryResponse>(`${API_BASE}/payout/history/${worker_id}`, { timeout: 10000 });
     
     // Map backend response fields to match the web app's `PayoutRecord` shape
+    const derivePayoutType = (triggerId: string): string => {
+      if (!triggerId) return 'Weather';
+      if (triggerId.startsWith('T4')) return 'Curfew';
+      if (triggerId.startsWith('T5')) return 'Platform';
+      return 'Weather'; // T1 rain, T2 heat, T3 AQI are all weather-related
+    };
+
     const payouts: PayoutRecord[] = (response.data.payouts || []).map((p: any) => ({
       id: p.payout_id || Math.random().toString(),
       amount: p.amount,
       status: p.status, 
       date: p.paid_at ? p.paid_at.split('T')[0] : 'Pending',
-      type: 'Weather' // Defaulting safely, maybe map from `trigger_id` later
+      type: derivePayoutType(p.trigger_id),
+      breakdown: p.breakdown
     }));
 
     cacheSet('payout_history', payouts);
@@ -305,4 +313,3 @@ export const triggerDisruption = async (zone_id: string, trigger_id: string, sev
     throw formatApiError(err);
   }
 };
-

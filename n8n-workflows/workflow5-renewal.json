@@ -1,0 +1,129 @@
+{
+  "name": "Workflow 5 - Renewal",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Every Sunday 9 PM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [200, 300],
+      "typeVersion": 1,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [0],
+              "triggerAtHour": 21
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fetch",
+      "name": "Find Expiring Policies",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 300],
+      "typeVersion": 4,
+      "parameters": {
+        "url": "http://host.docker.internal:3000/policy/expiring",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "check",
+      "name": "Any Policies?",
+      "type": "n8n-nodes-base.if",
+      "position": [700, 300],
+      "typeVersion": 1,
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.policies?.length || 0 }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "split",
+      "name": "Split Policies",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [950, 200],
+      "typeVersion": 1,
+      "parameters": {
+        "batchSize": 1
+      }
+    },
+    {
+      "id": "renew",
+      "name": "Renew Policy",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1200, 200],
+      "typeVersion": 4,
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/policy/activate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"worker_id\": \"{{ $json.worker_id }}\",\n  \"payment_reference\": \"AUTO_RENEW_N8N\",\n  \"premium\": {{ $json.premium_paid || 25 }},\n  \"coverage_cap\": {{ $json.coverage_cap || 500 }},\n  \"risk_score\": {{ $json.risk_score || 0.3 }}\n}",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "log",
+      "name": "Log Renewal",
+      "type": "n8n-nodes-base.code",
+      "position": [1450, 200],
+      "typeVersion": 1,
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nconsole.log(`[Renewal] Policy renewed: ${result.policy_id || 'done'} for worker ${result.worker_id || 'unknown'}`);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    },
+    {
+      "id": "noop",
+      "name": "No Renewals Needed",
+      "type": "n8n-nodes-base.noOp",
+      "position": [950, 420],
+      "typeVersion": 1,
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Every Sunday 9 PM": {
+      "main": [[
+        { "node": "Find Expiring Policies", "type": "main", "index": 0 }
+      ]]
+    },
+    "Find Expiring Policies": {
+      "main": [[
+        { "node": "Any Policies?", "type": "main", "index": 0 }
+      ]]
+    },
+    "Any Policies?": {
+      "main": [
+        [{ "node": "Split Policies", "type": "main", "index": 0 }],
+        [{ "node": "No Renewals Needed", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split Policies": {
+      "main": [[
+        { "node": "Renew Policy", "type": "main", "index": 0 }
+      ]]
+    },
+    "Renew Policy": {
+      "main": [[
+        { "node": "Log Renewal", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" }
+}
