@@ -392,7 +392,7 @@ function computeSmartPayout(revenueLoss, mlRiskScore, clusterResult, temporalRes
             capped_at_coverage: revenueLoss.capped_loss,
             fraud_penalty: `${(fraudPenalty * 100).toFixed(0)}%`,
             final_payout: Math.round(finalPayout * 100) / 100,
-            // ── Full 4-layer fraud analysis breakdown ──
+            // ── Full 5-layer fraud analysis breakdown ──
             fraud_layers: {
                 ml_risk_score: Math.round(mlRiskScore * 1000) / 1000,
                 behavioral_severity: {

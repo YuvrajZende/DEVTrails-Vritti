@@ -49,7 +49,7 @@ Vritti is **AI-powered parametric income insurance for India's gig delivery work
 | Member | What They're Building | Task File | Critical Deadline |
 |---|---|---|---|
 | **Yuvraj** | XGBoost risk model + FastAPI `/risk-score` endpoint + shared contract schemas | [YUVRAJ.md](./YUVRAJ.md) | Mar 28 — API live on Railway |
-| **Sairaj** | 4-layer fraud detection engine + FastAPI `/fraud-validate` endpoint | [SAIRAJ.md](./SAIRAJ.md) | Apr 1 — API live on Railway |
+| **Sairaj** | 5-layer fraud detection engine + FastAPI `/fraud-validate` endpoint | [SAIRAJ.md](./SAIRAJ.md) | Apr 1 — API live on Railway |
 | **Nevil** | Fastify REST API (6 endpoints) + PostgreSQL database (6 tables) on Neon | [NEVIL.md](./NEVIL.md) | Mar 30 — API live on Railway |
 | **Shivam** | 5 n8n automation workflows (triggers, orchestrator, payout, renewal) | [SHIVAM.md](./SHIVAM.md) | Apr 1 — All workflows live |
 | **Bhunesh** | React Native (Expo) Android app — 12 screens, 5 languages | [BHUNESH.md](./BHUNESH.md) | Apr 2 — App wired to live API |

@@ -550,7 +550,7 @@ def validate_event(state: GraphState):
 
 def generate_claims(state: GraphState):
     print(f"\n  📋 [generate_claims] Calling backend /claim/initiate...")
-    print(f"     ML Risk Score + Revenue Loss model + 4-Layer Fraud Detection active")
+    print(f"     ML Risk Score + Revenue Loss model + 5-Layer Fraud Detection active")
     try:
         response = requests.post(
             f"{BHUNESH_BACKEND_URL}/claim/initiate",
@@ -606,7 +606,7 @@ def generate_claims(state: GraphState):
                 print(f"     │  Fraud Penalty:     {breakdown.get('fraud_penalty', '0%')}")
 
             if fraud_layers:
-                print(f"     │  ────────── 4-Layer Fraud Analysis ──────────")
+                print(f"     │  ────────── 5-Layer Fraud Analysis ──────────")
                 print(f"     │  L1 ML Risk:        {fraud_layers.get('ml_risk_score', '?')}")
                 cc = fraud_layers.get('cluster_consensus', {})
                 if cc:

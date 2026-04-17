@@ -55,7 +55,7 @@ Vritti is a mobile-first parametric income insurance platform for gig delivery w
 -  AI engine calculates a personalized weekly premium (₹35–₹80)
 -  5 parametric triggers auto-detect disruptions in the worker's zone
 -  Automatic UPI payout within 2 hours — zero claim filing required
--  4-layer fraud detection protects the risk pool
+-  5-layer fraud detection protects the risk pool
 
 ---
 
